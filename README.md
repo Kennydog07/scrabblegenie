@@ -1,32 +1,16 @@
-# Scrabble Solver Claude / Anthropic Version
+# Scrabble Solver Claude Fixed
 
-This version uses an Anthropic API key, not an OpenAI key.
+Upload these files to GitHub and deploy to Netlify.
 
-## Required Netlify environment variable
+Required Netlify environment variable:
 
 ANTHROPIC_API_KEY
 
-Optional:
+Netlify build settings:
+Build command: npm run build
+Publish directory: dist
 
-ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
+This version uses Claude Haiku:
+claude-3-haiku-20240307
 
-## Upload to Netlify
-
-Upload/push all files:
-
-index.html
-package.json
-netlify.toml
-netlify/functions/analyse-board.js
-
-## How it works
-
-1. User uploads screenshot.
-2. Browser resizes the image.
-3. Browser sends it to the Netlify function.
-4. Netlify function calls Claude Messages API with image input.
-5. Claude returns board JSON + top 3 moves.
-6. App populates board and highlights the moves.
-
-Do not put your Anthropic key in index.html.
-Only add it in Netlify environment variables.
+It also reduces the screenshot size before sending to reduce 502 errors.

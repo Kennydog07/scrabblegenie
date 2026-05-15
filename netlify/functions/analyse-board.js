@@ -1,65 +1,47 @@
 exports.handler = async function(event) {
-  if (event.httpMethod !== "POST") {
-    return send(405, { error: "Method not allowed." });
-  }
+  if (event.httpMethod !== "POST") return send(405, { error: "Method not allowed." });
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return send(500, { error: "Missing ANTHROPIC_API_KEY. Add it in Netlify Environment variables, then redeploy." });
-  }
+  if (!apiKey) return send(500, { error: "Missing ANTHROPIC_API_KEY in Netlify environment variables." });
 
-  let payload;
-  try {
-    payload = JSON.parse(event.body || "{}");
-  } catch {
-    return send(400, { error: "Bad request: invalid JSON." });
-  }
+  let body;
+  try { body = JSON.parse(event.body || "{}"); }
+  catch { return send(400, { error: "Invalid JSON request." }); }
 
-  const imageDataUrl = String(payload.image || "");
-  const rack = String(payload.rack || "").toUpperCase().replace(/[^A-Z?]/g, "");
-
-  if (!imageDataUrl.startsWith("data:image/")) {
-    return send(400, { error: "No image received by the API function." });
-  }
-
-  const match = imageDataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
-  if (!match) {
-    return send(400, { error: "Image must be a base64 data URL." });
-  }
+  const dataUrl = String(body.image || "");
+  const rack = String(body.rack || "").toUpperCase().replace(/[^A-Z?]/g, "");
+  const match = dataUrl.match(/^data:(image\/[^;]+);base64,(.+)$/);
+  if (!match) return send(400, { error: "No valid base64 image received." });
 
   const mediaType = match[1] === "image/jpg" ? "image/jpeg" : match[1];
-  const base64Data = match[2];
+  const imageBase64 = match[2];
 
-  const prompt = `
-You are a Scrabble board analysis engine.
+  const prompt = `Analyse this Scrabble Go screenshot. Return JSON only.
 
-Analyse this screenshot and return JSON only. No markdown.
-
-Return this exact JSON shape:
+JSON format:
 {
-  "board": [["","","", ... 15 items], ... 15 rows],
-  "detectedRack": "LETTERS",
-  "topMoves": [
-    {"word":"WORD","row":7,"col":7,"direction":"H","score":24,"explanation":"short reason"}
-  ],
-  "note": "short note"
+ "board":[["","","","","","","","","","","","","","",""], ... exactly 15 rows],
+ "detectedRack":"LETTERS",
+ "topMoves":[
+  {"word":"WORD","row":7,"col":7,"direction":"H","score":20,"explanation":"short reason"},
+  {"word":"WORD","row":7,"col":7,"direction":"H","score":18,"explanation":"short reason"},
+  {"word":"WORD","row":7,"col":7,"direction":"H","score":16,"explanation":"short reason"}
+ ],
+ "note":"short note"
 }
 
 Rules:
-1. Detect the 15x15 board.
-2. Populate board with existing tiles. Use "" for empty squares.
-3. Use uppercase A-Z only.
-4. Supplied typed rack: "${rack || "not supplied"}".
-5. If typed rack is supplied, prioritise it over visually detected rack.
-6. Recommend exactly 3 best scoring Scrabble moves.
-7. row and col must be zero-based numbers from 0 to 14.
-8. direction must be "H" for across or "V" for down.
-9. If the screenshot is unclear, make your best estimate and explain uncertainty in note.
-10. Return JSON only.
-`;
+- board must be exactly 15 x 15.
+- Use uppercase letters only. Empty square = "".
+- Typed rack letters: ${rack || "not supplied"}.
+- If typed rack supplied, use those rack letters.
+- Return exactly 3 move options.
+- row/col are zero-based 0-14.
+- direction is H or V.
+- Keep response concise.`;
 
   try {
-    const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "x-api-key": apiKey,
@@ -67,126 +49,60 @@ Rules:
         "content-type": "application/json"
       },
       body: JSON.stringify({
-        model: process.env.ANTHROPIC_MODEL || "claude-3-5-sonnet-20241022",
-        max_tokens: 2500,
+        model: process.env.ANTHROPIC_MODEL || "claude-3-haiku-20240307",
+        max_tokens: 1000,
         temperature: 0,
-        messages: [
-          {
-            role: "user",
-            content: [
-              {
-                type: "image",
-                source: {
-                  type: "base64",
-                  media_type: mediaType,
-                  data: base64Data
-                }
-              },
-              {
-                type: "text",
-                text: prompt
-              }
-            ]
-          }
-        ]
+        messages: [{
+          role: "user",
+          content: [
+            { type: "image", source: { type: "base64", media_type: mediaType, data: imageBase64 } },
+            { type: "text", text: prompt }
+          ]
+        }]
       })
     });
 
-    const raw = await anthropicRes.text();
+    const raw = await resp.text();
+    if (!resp.ok) return send(resp.status, { error: "Anthropic API error: " + raw.slice(0, 1000) });
 
-    if (!anthropicRes.ok) {
-      return send(anthropicRes.status, {
-        error: "Anthropic API error: " + raw.slice(0, 1200)
-      });
-    }
-
-    let outer;
-    try {
-      outer = JSON.parse(raw);
-    } catch {
-      return send(500, { error: "Anthropic returned non-JSON response: " + raw.slice(0, 600) });
-    }
-
-    const outputText = extractText(outer);
-    if (!outputText) {
-      return send(500, { error: "Claude returned no text. Raw response: " + JSON.stringify(outer).slice(0, 1000) });
-    }
-
-    const jsonText = extractJson(outputText);
-    let parsed;
-    try {
-      parsed = JSON.parse(jsonText);
-    } catch {
-      return send(500, { error: "Could not parse Claude JSON. Claude said: " + outputText.slice(0, 1200) });
-    }
-
-    parsed = normalise(parsed);
+    const outer = JSON.parse(raw);
+    const text = (outer.content || []).filter(x => x.type === "text").map(x => x.text).join("\n").trim();
+    const jsonText = extractJson(text);
+    const parsed = normalise(JSON.parse(jsonText));
     return send(200, parsed);
-  } catch (err) {
-    return send(500, { error: err.message || "Unknown server error." });
+  } catch (e) {
+    return send(500, { error: e.message || "Unknown function error." });
   }
 };
 
-function extractText(response) {
-  if (!Array.isArray(response.content)) return "";
-  return response.content
-    .filter(block => block.type === "text" && typeof block.text === "string")
-    .map(block => block.text)
-    .join("\n")
-    .trim();
-}
-
 function extractJson(text) {
-  const trimmed = text.trim();
-
-  if (trimmed.startsWith("{") && trimmed.endsWith("}")) return trimmed;
-
-  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  if (fenced) return fenced[1].trim();
-
-  const start = trimmed.indexOf("{");
-  const end = trimmed.lastIndexOf("}");
-  if (start !== -1 && end !== -1 && end > start) {
-    return trimmed.slice(start, end + 1);
-  }
-
-  return trimmed;
+  const s = String(text || "").trim();
+  const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence) return fence[1].trim();
+  const a = s.indexOf("{"), b = s.lastIndexOf("}");
+  return a >= 0 && b > a ? s.slice(a, b + 1) : s;
 }
 
 function normalise(data) {
-  const emptyRow = () => Array.from({ length: 15 }, () => "");
-
-  if (!Array.isArray(data.board)) data.board = Array.from({ length: 15 }, emptyRow);
-
+  const empty = () => Array.from({ length: 15 }, () => "");
+  if (!Array.isArray(data.board)) data.board = Array.from({ length: 15 }, empty);
   data.board = data.board.slice(0, 15).map(row => {
     const r = Array.isArray(row) ? row.slice(0, 15) : [];
     while (r.length < 15) r.push("");
     return r.map(v => String(v || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 1));
   });
-
-  while (data.board.length < 15) data.board.push(emptyRow());
+  while (data.board.length < 15) data.board.push(empty());
 
   if (!Array.isArray(data.topMoves)) data.topMoves = [];
-
   data.topMoves = data.topMoves.slice(0, 3).map(m => ({
     word: String(m.word || "").toUpperCase().replace(/[^A-Z]/g, ""),
     row: clamp(Number(m.row), 0, 14),
     col: clamp(Number(m.col), 0, 14),
-    direction: String(m.direction || "H").toUpperCase().startsWith("V") || String(m.direction || "").toUpperCase().startsWith("D") ? "V" : "H",
+    direction: String(m.direction || "H").toUpperCase() === "V" ? "V" : "H",
     score: Number(m.score || 0),
     explanation: String(m.explanation || "")
   }));
-
-  while (data.topMoves.length < 3) {
-    data.topMoves.push({
-      word: "UNKNOWN",
-      row: 7,
-      col: 7,
-      direction: "H",
-      score: 0,
-      explanation: "Claude could not confidently identify enough move options."
-    });
-  }
+  while (data.topMoves.length < 3) data.topMoves.push({ word: "UNKNOWN", row: 7, col: 7, direction: "H", score: 0, explanation: "Not enough confident options." });
 
   data.detectedRack = String(data.detectedRack || "");
   data.note = String(data.note || "Analysis complete.");
@@ -199,12 +115,5 @@ function clamp(n, min, max) {
 }
 
 function send(statusCode, body) {
-  return {
-    statusCode,
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*"
-    },
-    body: JSON.stringify(body)
-  };
+  return { statusCode, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" }, body: JSON.stringify(body) };
 }

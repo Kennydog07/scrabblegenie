@@ -1,8 +1,9 @@
 {
-  "name": "scrabble-solver-claude",
+  "name": "scrabble-solver-claude-fixed",
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "build": "mkdir -p dist && cp index.html dist/index.html",
     "start": "netlify dev"
   },
   "dependencies": {}
