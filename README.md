@@ -1,22 +1,53 @@
-# Scrabble Solver
+# Scrabble Solver AI
 
-This version has a real visible screenshot upload function.
+This version adds a real API backend using a Netlify Function.
 
-## How to use
+## Files
 
-1. Open `index.html` in your browser.
-2. Click the file upload box.
-3. Select a screenshot.
-4. The screenshot preview will appear.
-5. Enter your letters.
-6. Click `Find Best Moves`.
+- `index.html` — the web app
+- `netlify/functions/analyse-board.js` — API function that sends the screenshot to OpenAI Vision
+- `netlify.toml` — Netlify config
+- `package.json` — project metadata
 
-## Upload to GitHub / Netlify
+## How it works
 
-You can upload this folder directly.
+1. User uploads a Scrabble board screenshot.
+2. User enters rack letters.
+3. The browser sends the image to `/.netlify/functions/analyse-board`.
+4. The function calls the OpenAI Responses API with image input.
+5. The API returns:
+   - detected 15x15 board
+   - detected rack
+   - top 3 move options
+6. The frontend highlights the 3 moves.
 
-For Netlify:
-- Publish directory: `/`
-- No build command needed
+## Netlify setup
 
-This is a simple standalone HTML/CSS/JS app.
+1. Upload/push this folder to GitHub.
+2. Connect the GitHub repo to Netlify.
+3. In Netlify, go to:
+
+   Site configuration → Environment variables
+
+4. Add:
+
+   OPENAI_API_KEY = your OpenAI API key
+
+5. Deploy.
+
+## Local testing
+
+You need Netlify CLI:
+
+```bash
+npm install
+npm install -g netlify-cli
+netlify dev
+```
+
+Then open the local Netlify URL.
+
+## Important
+
+Do not put your OpenAI API key inside `index.html`.
+It must only be stored in Netlify environment variables.

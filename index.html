@@ -3,330 +3,354 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Scrabble Solver</title>
+  <title>Scrabble Solver AI</title>
   <style>
+    * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: Arial, Helvetica, sans-serif;
       background: #020617;
       color: white;
-      padding: 30px;
+      padding: 24px;
     }
-
-    .container {
-      max-width: 1200px;
-      margin: auto;
-    }
-
-    h1 {
-      font-size: 48px;
-      margin-bottom: 5px;
-    }
-
-    p {
-      color: #94a3b8;
-    }
-
+    .container { max-width: 1250px; margin: auto; }
+    h1 { font-size: 44px; margin: 0 0 8px; }
+    p { color: #94a3b8; line-height: 1.5; }
     .layout {
       display: grid;
-      grid-template-columns: 1fr 380px;
+      grid-template-columns: 1fr 390px;
       gap: 24px;
-      margin-top: 30px;
+      margin-top: 24px;
     }
-
     .card {
       background: #0f172a;
       border: 1px solid #1e293b;
       border-radius: 24px;
-      padding: 24px;
+      padding: 22px;
+      box-shadow: 0 18px 40px rgba(0,0,0,.25);
     }
-
-    input[type="file"] {
+    .upload {
       display: block;
       width: 100%;
-      padding: 18px;
+      padding: 16px;
       background: white;
       color: black;
       border-radius: 16px;
-      font-size: 18px;
-      font-weight: bold;
-      margin-bottom: 20px;
+      font-weight: 900;
+      font-size: 16px;
+      margin-bottom: 16px;
     }
-
     #preview {
       width: 100%;
-      max-height: 420px;
+      max-height: 520px;
       object-fit: contain;
       border-radius: 18px;
       border: 1px solid #334155;
-      display: none;
       background: #020617;
-      margin-bottom: 20px;
+      display: none;
+      margin-bottom: 18px;
     }
-
-    .empty-preview {
-      height: 300px;
+    .empty {
+      min-height: 300px;
       border: 2px dashed #334155;
       border-radius: 18px;
+      color: #64748b;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #64748b;
-      margin-bottom: 20px;
+      margin-bottom: 18px;
+      text-align: center;
+      padding: 20px;
     }
-
     .board {
       display: grid;
-      grid-template-columns: repeat(15, 1fr);
+      grid-template-columns: repeat(15, minmax(18px, 1fr));
       gap: 3px;
       background: #1e293b;
       padding: 6px;
-      border-radius: 16px;
+      border-radius: 18px;
     }
-
     .cell {
       aspect-ratio: 1;
       background: #020617;
       border: 1px solid #334155;
       border-radius: 5px;
-      text-align: center;
       color: white;
-      font-weight: bold;
-      font-size: 16px;
+      text-align: center;
+      font-weight: 900;
+      font-size: clamp(9px, 1.25vw, 17px);
       text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
-
-    .cell.top1 { background: #34d399; color: black; }
-    .cell.top2 { background: #38bdf8; color: black; }
-    .cell.top3 { background: #fbbf24; color: black; }
-
+    .move1 { background: #34d399 !important; color: #020617 !important; }
+    .move2 { background: #38bdf8 !important; color: #020617 !important; }
+    .move3 { background: #fbbf24 !important; color: #020617 !important; }
     .rack {
       width: 100%;
-      padding: 18px;
+      padding: 17px;
       border-radius: 16px;
       border: 1px solid #334155;
       background: #020617;
       color: white;
-      font-size: 32px;
-      font-weight: bold;
-      letter-spacing: 8px;
-      box-sizing: border-box;
+      font-size: 28px;
+      font-weight: 900;
+      letter-spacing: 6px;
       text-transform: uppercase;
     }
-
     button {
       width: 100%;
-      padding: 18px;
-      margin-top: 16px;
-      border: none;
+      padding: 16px;
+      border: 0;
       border-radius: 16px;
-      background: white;
-      color: black;
-      font-size: 18px;
-      font-weight: bold;
+      font-size: 17px;
+      font-weight: 900;
       cursor: pointer;
+      margin-top: 12px;
     }
-
+    .primary { background: #22c55e; color: #03130a; }
+    .secondary { background: #334155; color: white; }
     .move {
       background: #020617;
       border: 1px solid #334155;
       border-radius: 18px;
-      padding: 18px;
-      margin-bottom: 14px;
+      padding: 16px;
+      margin-bottom: 12px;
     }
-
     .move-title {
       display: flex;
       justify-content: space-between;
-      font-size: 24px;
-      font-weight: bold;
+      gap: 12px;
+      font-size: 21px;
+      font-weight: 900;
     }
-
-    .move-detail {
-      color: #94a3b8;
-      margin-top: 8px;
+    .move-detail { color: #94a3b8; margin-top: 8px; font-size: 14px; }
+    .status {
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: 16px;
+      background: rgba(59,130,246,.12);
+      border: 1px solid rgba(59,130,246,.4);
+      color: #bfdbfe;
+      font-size: 14px;
+      line-height: 1.45;
     }
-
-    @media (max-width: 900px) {
-      .layout {
-        grid-template-columns: 1fr;
-      }
-
-      h1 {
-        font-size: 36px;
-      }
+    .error {
+      background: rgba(239,68,68,.12);
+      border-color: rgba(239,68,68,.4);
+      color: #fecaca;
     }
+    .notice {
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: 16px;
+      background: rgba(245,158,11,.10);
+      border: 1px solid rgba(245,158,11,.45);
+      color: #fde68a;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+    @media (max-width: 950px) { .layout { grid-template-columns: 1fr; } h1 { font-size: 34px; } }
   </style>
 </head>
-
 <body>
   <div class="container">
-    <h1>Scrabble Solver</h1>
-    <p>Upload a screenshot of your Scrabble board, enter your letters, then view the top suggested moves.</p>
+    <h1>Scrabble Solver AI</h1>
+    <p>Upload a board screenshot. The app sends it to your Netlify API function, analyses the board, and returns the top 3 suggested moves.</p>
 
     <div class="layout">
-      <div class="card">
-        <h2>1. Upload Screenshot</h2>
-
-        <input id="screenshotUpload" type="file" accept="image/*" />
-
+      <main class="card">
+        <h2>1. Upload screenshot</h2>
+        <input id="upload" class="upload" type="file" accept="image/*" />
         <img id="preview" alt="Uploaded Scrabble board screenshot" />
+        <div id="empty" class="empty">No screenshot uploaded yet</div>
 
-        <div id="emptyPreview" class="empty-preview">
-          No screenshot uploaded yet
-        </div>
-
-        <h2>2. Correct / Enter Board Letters</h2>
-        <p>Click any square and type a letter.</p>
-
+        <h2>Detected board / suggested placements</h2>
         <div id="board" class="board"></div>
-      </div>
+      </main>
 
-      <div>
-        <div class="card">
-          <h2>3. Your Letters</h2>
-          <input id="rackInput" class="rack" maxlength="7" placeholder="RETSAIN" />
-          <button onclick="solveBoard()">Find Best Moves</button>
-        </div>
-
-        <div class="card" style="margin-top: 24px;">
-          <h2>Top 3 Moves</h2>
-          <div id="moves">
-            <p>No moves yet. Upload a screenshot, enter letters, then click Find Best Moves.</p>
+      <aside>
+        <section class="card">
+          <h2>2. Your rack letters</h2>
+          <p>Type your letters. If the photo shows your rack clearly, you can leave this blank, but typing it is much more reliable.</p>
+          <input id="rack" class="rack" maxlength="7" placeholder="RETSAIN" />
+          <button id="analyseBtn" class="primary">Analyse Board</button>
+          <button id="clearBtn" class="secondary">Clear</button>
+          <div id="status" class="status">Ready. Upload a screenshot, enter rack letters, then press Analyse Board.</div>
+          <div class="notice">
+            You must add your OpenAI API key in Netlify as <b>OPENAI_API_KEY</b>. Do not put your key inside this HTML file.
           </div>
-        </div>
-      </div>
+        </section>
+
+        <section class="card" style="margin-top:24px;">
+          <h2>Top 3 options</h2>
+          <div id="results"><p>No analysis yet.</p></div>
+        </section>
+      </aside>
     </div>
   </div>
 
-  <script>
-    const boardEl = document.getElementById("board");
-    const uploadInput = document.getElementById("screenshotUpload");
-    const preview = document.getElementById("preview");
-    const emptyPreview = document.getElementById("emptyPreview");
-    const movesEl = document.getElementById("moves");
+<script>
+const upload = document.getElementById("upload");
+const preview = document.getElementById("preview");
+const empty = document.getElementById("empty");
+const boardEl = document.getElementById("board");
+const rackEl = document.getElementById("rack");
+const statusEl = document.getElementById("status");
+const resultsEl = document.getElementById("results");
+const analyseBtn = document.getElementById("analyseBtn");
+const clearBtn = document.getElementById("clearBtn");
 
-    const WORDS = [
-      "QUIZ", "JAZZ", "QUICK", "PLAY", "WORD", "BOARD", "GAME",
-      "TILE", "SCORE", "STAR", "READ", "ROAD", "TRAIN", "RAIN",
-      "STONE", "HOUSE", "MOUSE", "BRAVE", "BRAIN", "CLEAR"
-    ];
+let imageDataUrl = "";
 
-    const LETTER_SCORES = {
-      A:1,B:3,C:3,D:2,E:1,F:4,G:2,H:4,I:1,J:8,K:5,L:1,M:3,
-      N:1,O:1,P:3,Q:10,R:1,S:1,T:1,U:1,V:4,W:4,X:8,Y:4,Z:10
-    };
+function setStatus(message, isError = false) {
+  statusEl.textContent = message;
+  statusEl.className = isError ? "status error" : "status";
+}
 
-    function createBoard() {
-      boardEl.innerHTML = "";
+function createEmptyBoard() {
+  boardEl.innerHTML = "";
+  for (let i = 0; i < 225; i++) {
+    const div = document.createElement("div");
+    div.className = "cell";
+    div.dataset.r = Math.floor(i / 15);
+    div.dataset.c = i % 15;
+    boardEl.appendChild(div);
+  }
+}
 
-      for (let i = 0; i < 225; i++) {
-        const input = document.createElement("input");
-        input.className = "cell";
-        input.maxLength = 1;
-        input.dataset.index = i;
+function drawBoard(board, moves = []) {
+  createEmptyBoard();
 
-        input.addEventListener("input", function () {
-          this.value = this.value.toUpperCase().replace(/[^A-Z]/g, "");
-        });
-
-        boardEl.appendChild(input);
+  if (Array.isArray(board)) {
+    for (let r = 0; r < 15; r++) {
+      for (let c = 0; c < 15; c++) {
+        const val = board?.[r]?.[c] || "";
+        const cell = document.querySelector(`[data-r="${r}"][data-c="${c}"]`);
+        if (cell) cell.textContent = val === "." ? "" : val;
       }
     }
+  }
 
-    function handleScreenshotUpload(event) {
-      const file = event.target.files[0];
+  moves.forEach((move, index) => {
+    const cls = ["move1", "move2", "move3"][index];
+    const dir = String(move.direction || "").toUpperCase().startsWith("D") || String(move.direction || "").toUpperCase() === "V" ? "V" : "H";
+    const row = Number(move.row);
+    const col = Number(move.col);
+    const word = String(move.word || "").toUpperCase();
 
-      if (!file) {
-        preview.style.display = "none";
-        emptyPreview.style.display = "flex";
-        return;
-      }
-
-      const imageUrl = URL.createObjectURL(file);
-      preview.src = imageUrl;
-      preview.style.display = "block";
-      emptyPreview.style.display = "none";
-    }
-
-    function scoreWord(word) {
-      return word.split("").reduce((total, letter) => {
-        return total + (LETTER_SCORES[letter] || 0);
-      }, 0);
-    }
-
-    function canMakeWord(word, rack) {
-      const letters = rack.toUpperCase().split("");
-      for (const letter of word) {
-        const index = letters.indexOf(letter);
-        if (index === -1) return false;
-        letters.splice(index, 1);
-      }
-      return true;
-    }
-
-    function clearHighlights() {
-      document.querySelectorAll(".cell").forEach(cell => {
-        cell.classList.remove("top1", "top2", "top3");
-      });
-    }
-
-    function highlightDemoMove(rank) {
-      const classes = ["top1", "top2", "top3"];
-      const startIndexes = [112, 97, 127];
-
-      for (let i = 0; i < 4; i++) {
-        const cell = document.querySelector(`[data-index="${startIndexes[rank] + i}"]`);
-        if (cell) cell.classList.add(classes[rank]);
+    for (let i = 0; i < word.length; i++) {
+      const r = row + (dir === "V" ? i : 0);
+      const c = col + (dir === "H" ? i : 0);
+      const cell = document.querySelector(`[data-r="${r}"][data-c="${c}"]`);
+      if (cell) {
+        cell.classList.add(cls);
+        cell.textContent = word[i];
       }
     }
+  });
+}
 
-    function solveBoard() {
-      clearHighlights();
+function renderMoves(moves) {
+  if (!Array.isArray(moves) || moves.length === 0) {
+    resultsEl.innerHTML = "<p>No moves returned.</p>";
+    return;
+  }
 
-      const rack = document.getElementById("rackInput").value.toUpperCase().replace(/[^A-Z]/g, "");
+  resultsEl.innerHTML = "";
+  moves.slice(0, 3).forEach((move, index) => {
+    const div = document.createElement("div");
+    div.className = "move";
+    div.innerHTML = `
+      <div class="move-title">
+        <span>#${index + 1} ${escapeHtml(move.word || "MOVE")}</span>
+        <span>${escapeHtml(String(move.score ?? "?"))} pts</span>
+      </div>
+      <div class="move-detail">
+        Row ${Number(move.row) + 1 || "?"}, Column ${Number(move.col) + 1 || "?"} ·
+        ${escapeHtml(move.direction || "?")} ·
+        ${escapeHtml(move.explanation || "")}
+      </div>
+    `;
+    resultsEl.appendChild(div);
+  });
+}
 
-      if (!rack) {
-        movesEl.innerHTML = "<p>Please enter your rack letters first.</p>";
-        return;
-      }
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
 
-      const possibleMoves = WORDS
-        .filter(word => canMakeWord(word, rack))
-        .map(word => ({
-          word,
-          score: scoreWord(word),
-          position: "Suggested board position"
-        }))
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 3);
+upload.addEventListener("change", () => {
+  const file = upload.files[0];
+  if (!file) return;
 
-      if (possibleMoves.length === 0) {
-        movesEl.innerHTML = "<p>No moves found with this small demo dictionary.</p>";
-        return;
-      }
+  const reader = new FileReader();
+  reader.onload = () => {
+    imageDataUrl = reader.result;
+    preview.src = imageDataUrl;
+    preview.style.display = "block";
+    empty.style.display = "none";
+    setStatus("Screenshot loaded. Now enter your rack letters and press Analyse Board.");
+  };
+  reader.readAsDataURL(file);
+});
 
-      movesEl.innerHTML = "";
+analyseBtn.addEventListener("click", async () => {
+  if (!imageDataUrl) {
+    setStatus("Upload a screenshot first.", true);
+    return;
+  }
 
-      possibleMoves.forEach((move, index) => {
-        highlightDemoMove(index);
+  analyseBtn.disabled = true;
+  analyseBtn.textContent = "Analysing...";
+  setStatus("Analysing screenshot with the API. This can take 10–30 seconds.");
 
-        const div = document.createElement("div");
-        div.className = "move";
-        div.innerHTML = `
-          <div class="move-title">
-            <span>#${index + 1} ${move.word}</span>
-            <span>${move.score} pts</span>
-          </div>
-          <div class="move-detail">${move.position}</div>
-        `;
-        movesEl.appendChild(div);
-      });
+  try {
+    const response = await fetch("/.netlify/functions/analyse-board", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        image: imageDataUrl,
+        rack: rackEl.value.toUpperCase().replace(/[^A-Z?]/g, "")
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "API request failed");
     }
 
-    uploadInput.addEventListener("change", handleScreenshotUpload);
+    drawBoard(data.board, data.topMoves);
+    renderMoves(data.topMoves);
+    setStatus(data.note || "Analysis complete. Top 3 options shown.");
+  } catch (error) {
+    setStatus(error.message, true);
+  } finally {
+    analyseBtn.disabled = false;
+    analyseBtn.textContent = "Analyse Board";
+  }
+});
 
-    createBoard();
-  </script>
+clearBtn.addEventListener("click", () => {
+  imageDataUrl = "";
+  upload.value = "";
+  rackEl.value = "";
+  preview.src = "";
+  preview.style.display = "none";
+  empty.style.display = "flex";
+  resultsEl.innerHTML = "<p>No analysis yet.</p>";
+  createEmptyBoard();
+  setStatus("Cleared. Upload a new screenshot.");
+});
+
+createEmptyBoard();
+</script>
 </body>
 </html>
