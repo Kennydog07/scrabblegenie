@@ -1,43 +1,32 @@
-# Scrabble Solver AI — Fixed Automatic Version
+# Scrabble Solver Claude / Anthropic Version
 
-This version analyses the screenshot automatically as soon as it is uploaded.
+This version uses an Anthropic API key, not an OpenAI key.
 
-## What changed
+## Required Netlify environment variable
 
-- Uploading a screenshot immediately calls the Netlify API function.
-- The image is resized in the browser before upload so Netlify does not reject huge screenshots.
-- The board grid is populated from the API result.
-- The top 3 moves are displayed immediately.
-- The top 3 moves are highlighted on the board.
-- Errors now show clearly on screen.
+ANTHROPIC_API_KEY
 
-## Files
+Optional:
 
-- `index.html`
-- `netlify/functions/analyse-board.js`
-- `netlify.toml`
-- `package.json`
+ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
 
-## Netlify setup
+## Upload to Netlify
 
-1. Upload this folder to GitHub.
-2. Connect it to Netlify.
-3. Add this environment variable:
+Upload/push all files:
 
-```txt
-OPENAI_API_KEY
-```
+index.html
+package.json
+netlify.toml
+netlify/functions/analyse-board.js
 
-4. Redeploy the site.
+## How it works
 
-Optional model override:
+1. User uploads screenshot.
+2. Browser resizes the image.
+3. Browser sends it to the Netlify function.
+4. Netlify function calls Claude Messages API with image input.
+5. Claude returns board JSON + top 3 moves.
+6. App populates board and highlights the moves.
 
-```txt
-OPENAI_MODEL=gpt-4.1-mini
-```
-
-## Important
-
-This uses OpenAI vision to read the screenshot. It will only work after the API key is added to Netlify and the site is redeployed.
-
-The app does not store your API key in the browser.
+Do not put your Anthropic key in index.html.
+Only add it in Netlify environment variables.

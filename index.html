@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Scrabble Solver AI</title>
+  <title>Scrabble Solver Claude AI</title>
   <style>
     * { box-sizing: border-box; }
     body { margin:0; font-family:Arial,Helvetica,sans-serif; background:#020617; color:white; padding:24px; }
@@ -36,8 +36,8 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>Scrabble Solver AI</h1>
-    <p>Upload the board screenshot. The app automatically analyses it, fills the board grid, and shows the top 3 moves.</p>
+    <h1>Scrabble Solver Claude AI</h1>
+    <p>Upload the board screenshot. The app automatically calls Claude, fills the board grid, and shows the top 3 moves.</p>
 
     <div class="grid">
       <main class="card">
@@ -46,14 +46,14 @@
         <img id="preview" alt="Uploaded board screenshot" />
         <div id="empty" class="empty">No screenshot uploaded yet</div>
 
-        <h2>Detected board + best move highlights</h2>
+        <h2>Detected board + move highlights</h2>
         <div id="board" class="board"></div>
       </main>
 
       <aside>
         <section class="card">
           <h2>Rack letters</h2>
-          <p class="small">Optional, but recommended. Type your rack before upload for best results. If blank, the API will try to read the rack from the screenshot.</p>
+          <p class="small">Recommended. Type your rack before upload. If blank, Claude will try to read the rack from the screenshot.</p>
           <input id="rack" class="rack" maxlength="7" placeholder="RETSAIN" />
           <button id="analyseBtn" class="primary">Re-analyse Screenshot</button>
           <button id="clearBtn" class="secondary">Clear</button>
@@ -68,7 +68,7 @@
         <section class="card" style="margin-top:24px;">
           <h2>Setup check</h2>
           <p class="small">Netlify environment variable required:</p>
-          <div class="status">OPENAI_API_KEY</div>
+          <div class="status">ANTHROPIC_API_KEY</div>
         </section>
       </aside>
     </div>
@@ -202,8 +202,8 @@ async function analyseNow() {
 
   analyseBtn.disabled = true;
   analyseBtn.textContent = "Analysing...";
-  resultsEl.innerHTML = "<p>Analysing screenshot...</p>";
-  setStatus("Analysing screenshot automatically. If this fails, the error will show here.");
+  resultsEl.innerHTML = "<p>Analysing screenshot with Claude...</p>";
+  setStatus("Analysing screenshot automatically with Claude. If this fails, the error will show here.");
 
   try {
     const res = await fetch("/.netlify/functions/analyse-board", {
@@ -220,15 +220,13 @@ async function analyseNow() {
     try { data = JSON.parse(text); }
     catch { throw new Error("Server did not return JSON. Response was: " + text.slice(0, 300)); }
 
-    if (!res.ok) {
-      throw new Error(data.error || "API failed.");
-    }
+    if (!res.ok) throw new Error(data.error || "API failed.");
 
     drawAnalysis(data);
     setStatus(data.note || "Done. Board populated and top 3 moves highlighted.", "success");
   } catch (err) {
     resultsEl.innerHTML = "<p>Analysis failed.</p>";
-    setStatus("Analysis failed:\n" + err.message + "\n\nCheck that OPENAI_API_KEY is set in Netlify and redeploy the site.", "error");
+    setStatus("Analysis failed:\n" + err.message + "\n\nCheck that ANTHROPIC_API_KEY is set in Netlify and redeploy the site.", "error");
   } finally {
     analyseBtn.disabled = false;
     analyseBtn.textContent = "Re-analyse Screenshot";
@@ -245,8 +243,6 @@ upload.addEventListener("change", async () => {
     preview.src = imageDataUrl;
     preview.style.display = "block";
     empty.style.display = "none";
-
-    // This is the important bit: analysis starts immediately after upload.
     await analyseNow();
   } catch (err) {
     setStatus(err.message, "error");

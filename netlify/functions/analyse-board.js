@@ -3,9 +3,9 @@ exports.handler = async function(event) {
     return send(405, { error: "Method not allowed." });
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
-    return send(500, { error: "Missing OPENAI_API_KEY. Add it in Netlify Environment variables, then redeploy." });
+    return send(500, { error: "Missing ANTHROPIC_API_KEY. Add it in Netlify Environment variables, then redeploy." });
   }
 
   let payload;
@@ -15,103 +15,88 @@ exports.handler = async function(event) {
     return send(400, { error: "Bad request: invalid JSON." });
   }
 
-  const image = payload.image;
+  const imageDataUrl = String(payload.image || "");
   const rack = String(payload.rack || "").toUpperCase().replace(/[^A-Z?]/g, "");
 
-  if (!image || !String(image).startsWith("data:image/")) {
+  if (!imageDataUrl.startsWith("data:image/")) {
     return send(400, { error: "No image received by the API function." });
   }
 
-  const schema = {
-    type: "object",
-    additionalProperties: false,
-    properties: {
-      board: {
-        type: "array",
-        minItems: 15,
-        maxItems: 15,
-        items: {
-          type: "array",
-          minItems: 15,
-          maxItems: 15,
-          items: { type: "string" }
-        }
-      },
-      detectedRack: { type: "string" },
-      topMoves: {
-        type: "array",
-        minItems: 3,
-        maxItems: 3,
-        items: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            word: { type: "string" },
-            row: { type: "number" },
-            col: { type: "number" },
-            direction: { type: "string" },
-            score: { type: "number" },
-            explanation: { type: "string" }
-          },
-          required: ["word", "row", "col", "direction", "score", "explanation"]
-        }
-      },
-      note: { type: "string" }
-    },
-    required: ["board", "detectedRack", "topMoves", "note"]
-  };
+  const match = imageDataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+  if (!match) {
+    return send(400, { error: "Image must be a base64 data URL." });
+  }
+
+  const mediaType = match[1] === "image/jpg" ? "image/jpeg" : match[1];
+  const base64Data = match[2];
 
   const prompt = `
 You are a Scrabble board analysis engine.
 
-Analyse this screenshot and return JSON only.
+Analyse this screenshot and return JSON only. No markdown.
 
-What to do:
+Return this exact JSON shape:
+{
+  "board": [["","","", ... 15 items], ... 15 rows],
+  "detectedRack": "LETTERS",
+  "topMoves": [
+    {"word":"WORD","row":7,"col":7,"direction":"H","score":24,"explanation":"short reason"}
+  ],
+  "note": "short note"
+}
+
+Rules:
 1. Detect the 15x15 board.
-2. Populate "board" with existing tiles. Use "" for empty squares.
-3. Detect the rack if visible. Supplied typed rack: "${rack || "not supplied"}".
-4. Recommend the top 3 best scoring Scrabble moves.
-5. Use zero-based row and column coordinates.
-6. Use direction "H" for across and "V" for down.
-7. If the board/rack is unclear, make the best estimate and say so in note.
-8. If a typed rack is supplied, prioritise it over visually detected rack letters.
-9. The app will highlight your returned coordinates, so make sure row/col/direction are usable.
+2. Populate board with existing tiles. Use "" for empty squares.
+3. Use uppercase A-Z only.
+4. Supplied typed rack: "${rack || "not supplied"}".
+5. If typed rack is supplied, prioritise it over visually detected rack.
+6. Recommend exactly 3 best scoring Scrabble moves.
+7. row and col must be zero-based numbers from 0 to 14.
+8. direction must be "H" for across or "V" for down.
+9. If the screenshot is unclear, make your best estimate and explain uncertainty in note.
+10. Return JSON only.
 `;
 
   try {
-    const apiRes = await fetch("https://api.openai.com/v1/responses", {
+    const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json"
       },
       body: JSON.stringify({
-        model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
-        input: [
+        model: process.env.ANTHROPIC_MODEL || "claude-3-5-sonnet-20241022",
+        max_tokens: 2500,
+        temperature: 0,
+        messages: [
           {
             role: "user",
             content: [
-              { type: "input_text", text: prompt },
-              { type: "input_image", image_url: image }
+              {
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: mediaType,
+                  data: base64Data
+                }
+              },
+              {
+                type: "text",
+                text: prompt
+              }
             ]
           }
-        ],
-        text: {
-          format: {
-            type: "json_schema",
-            name: "scrabble_analysis",
-            schema,
-            strict: true
-          }
-        }
+        ]
       })
     });
 
-    const raw = await apiRes.text();
+    const raw = await anthropicRes.text();
 
-    if (!apiRes.ok) {
-      return send(apiRes.status, {
-        error: "OpenAI API error: " + raw.slice(0, 1200)
+    if (!anthropicRes.ok) {
+      return send(anthropicRes.status, {
+        error: "Anthropic API error: " + raw.slice(0, 1200)
       });
     }
 
@@ -119,19 +104,20 @@ What to do:
     try {
       outer = JSON.parse(raw);
     } catch {
-      return send(500, { error: "OpenAI returned non-JSON response: " + raw.slice(0, 500) });
+      return send(500, { error: "Anthropic returned non-JSON response: " + raw.slice(0, 600) });
     }
 
-    const outputText = extractOutputText(outer);
+    const outputText = extractText(outer);
     if (!outputText) {
-      return send(500, { error: "OpenAI returned no output_text. Raw response: " + JSON.stringify(outer).slice(0, 1000) });
+      return send(500, { error: "Claude returned no text. Raw response: " + JSON.stringify(outer).slice(0, 1000) });
     }
 
+    const jsonText = extractJson(outputText);
     let parsed;
     try {
-      parsed = JSON.parse(outputText);
+      parsed = JSON.parse(jsonText);
     } catch {
-      return send(500, { error: "Could not parse model JSON: " + outputText.slice(0, 1000) });
+      return send(500, { error: "Could not parse Claude JSON. Claude said: " + outputText.slice(0, 1200) });
     }
 
     parsed = normalise(parsed);
@@ -141,38 +127,47 @@ What to do:
   }
 };
 
-function extractOutputText(response) {
-  if (typeof response.output_text === "string") return response.output_text;
+function extractText(response) {
+  if (!Array.isArray(response.content)) return "";
+  return response.content
+    .filter(block => block.type === "text" && typeof block.text === "string")
+    .map(block => block.text)
+    .join("\n")
+    .trim();
+}
 
-  if (Array.isArray(response.output)) {
-    for (const item of response.output) {
-      if (Array.isArray(item.content)) {
-        for (const content of item.content) {
-          if (typeof content.text === "string") return content.text;
-          if (typeof content.output_text === "string") return content.output_text;
-        }
-      }
-    }
+function extractJson(text) {
+  const trimmed = text.trim();
+
+  if (trimmed.startsWith("{") && trimmed.endsWith("}")) return trimmed;
+
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenced) return fenced[1].trim();
+
+  const start = trimmed.indexOf("{");
+  const end = trimmed.lastIndexOf("}");
+  if (start !== -1 && end !== -1 && end > start) {
+    return trimmed.slice(start, end + 1);
   }
 
-  return "";
+  return trimmed;
 }
 
 function normalise(data) {
   const emptyRow = () => Array.from({ length: 15 }, () => "");
+
   if (!Array.isArray(data.board)) data.board = Array.from({ length: 15 }, emptyRow);
 
   data.board = data.board.slice(0, 15).map(row => {
     const r = Array.isArray(row) ? row.slice(0, 15) : [];
     while (r.length < 15) r.push("");
-    return r.map(v => {
-      const s = String(v || "").toUpperCase().replace(/[^A-Z]/g, "");
-      return s.slice(0, 1);
-    });
+    return r.map(v => String(v || "").toUpperCase().replace(/[^A-Z]/g, "").slice(0, 1));
   });
+
   while (data.board.length < 15) data.board.push(emptyRow());
 
   if (!Array.isArray(data.topMoves)) data.topMoves = [];
+
   data.topMoves = data.topMoves.slice(0, 3).map(m => ({
     word: String(m.word || "").toUpperCase().replace(/[^A-Z]/g, ""),
     row: clamp(Number(m.row), 0, 14),
@@ -189,7 +184,7 @@ function normalise(data) {
       col: 7,
       direction: "H",
       score: 0,
-      explanation: "The model could not confidently identify enough move options."
+      explanation: "Claude could not confidently identify enough move options."
     });
   }
 
