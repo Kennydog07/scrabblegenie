@@ -1,8 +1,7 @@
 {
-  "name": "scrabble-solver-ai",
+  "name": "scrabble-solver-ai-fixed",
   "version": "1.0.0",
   "private": true,
-  "description": "Scrabble screenshot solver with Netlify Function and OpenAI vision API",
   "scripts": {
     "start": "netlify dev"
   },

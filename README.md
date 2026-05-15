@@ -1,53 +1,43 @@
-# Scrabble Solver AI
+# Scrabble Solver AI — Fixed Automatic Version
 
-This version adds a real API backend using a Netlify Function.
+This version analyses the screenshot automatically as soon as it is uploaded.
+
+## What changed
+
+- Uploading a screenshot immediately calls the Netlify API function.
+- The image is resized in the browser before upload so Netlify does not reject huge screenshots.
+- The board grid is populated from the API result.
+- The top 3 moves are displayed immediately.
+- The top 3 moves are highlighted on the board.
+- Errors now show clearly on screen.
 
 ## Files
 
-- `index.html` — the web app
-- `netlify/functions/analyse-board.js` — API function that sends the screenshot to OpenAI Vision
-- `netlify.toml` — Netlify config
-- `package.json` — project metadata
-
-## How it works
-
-1. User uploads a Scrabble board screenshot.
-2. User enters rack letters.
-3. The browser sends the image to `/.netlify/functions/analyse-board`.
-4. The function calls the OpenAI Responses API with image input.
-5. The API returns:
-   - detected 15x15 board
-   - detected rack
-   - top 3 move options
-6. The frontend highlights the 3 moves.
+- `index.html`
+- `netlify/functions/analyse-board.js`
+- `netlify.toml`
+- `package.json`
 
 ## Netlify setup
 
-1. Upload/push this folder to GitHub.
-2. Connect the GitHub repo to Netlify.
-3. In Netlify, go to:
+1. Upload this folder to GitHub.
+2. Connect it to Netlify.
+3. Add this environment variable:
 
-   Site configuration → Environment variables
-
-4. Add:
-
-   OPENAI_API_KEY = your OpenAI API key
-
-5. Deploy.
-
-## Local testing
-
-You need Netlify CLI:
-
-```bash
-npm install
-npm install -g netlify-cli
-netlify dev
+```txt
+OPENAI_API_KEY
 ```
 
-Then open the local Netlify URL.
+4. Redeploy the site.
+
+Optional model override:
+
+```txt
+OPENAI_MODEL=gpt-4.1-mini
+```
 
 ## Important
 
-Do not put your OpenAI API key inside `index.html`.
-It must only be stored in Netlify environment variables.
+This uses OpenAI vision to read the screenshot. It will only work after the API key is added to Netlify and the site is redeployed.
+
+The app does not store your API key in the browser.

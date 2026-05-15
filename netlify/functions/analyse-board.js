@@ -1,49 +1,26 @@
 exports.handler = async function(event) {
   if (event.httpMethod !== "POST") {
-    return json(405, { error: "Method not allowed" });
+    return send(405, { error: "Method not allowed." });
   }
 
-  if (!process.env.OPENAI_API_KEY) {
-    return json(500, {
-      error: "Missing OPENAI_API_KEY. Add it in Netlify: Site settings → Environment variables → OPENAI_API_KEY."
-    });
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return send(500, { error: "Missing OPENAI_API_KEY. Add it in Netlify Environment variables, then redeploy." });
   }
 
-  let body;
+  let payload;
   try {
-    body = JSON.parse(event.body || "{}");
+    payload = JSON.parse(event.body || "{}");
   } catch {
-    return json(400, { error: "Invalid JSON body." });
+    return send(400, { error: "Bad request: invalid JSON." });
   }
 
-  const image = body.image;
-  const rack = String(body.rack || "").toUpperCase().replace(/[^A-Z?]/g, "");
+  const image = payload.image;
+  const rack = String(payload.rack || "").toUpperCase().replace(/[^A-Z?]/g, "");
 
   if (!image || !String(image).startsWith("data:image/")) {
-    return json(400, { error: "Missing image data. Upload a screenshot first." });
+    return send(400, { error: "No image received by the API function." });
   }
-
-  const prompt = `
-You are a Scrabble move-analysis engine.
-
-Analyse the uploaded screenshot of a Scrabble board.
-
-Tasks:
-1. Read the visible 15x15 Scrabble board as accurately as possible.
-2. Use the supplied rack letters if provided: "${rack || "not supplied"}".
-3. Recommend the top 3 legal-looking Scrabble moves for maximum score.
-4. Return only JSON matching the schema.
-
-Board format:
-- board must be exactly 15 arrays of 15 strings.
-- Use uppercase letters A-Z for existing tiles.
-- Use "" for empty squares.
-- row and col for moves must be zero-based numbers from 0 to 14.
-- direction must be "H" for across or "V" for down.
-- If the screenshot is unclear, still make your best estimate and explain uncertainty in note.
-- If rack letters are supplied, only suggest moves that use those rack letters plus existing board letters.
-- Scores should be realistic Scrabble scores including obvious premium squares where possible.
-`;
 
   const schema = {
     type: "object",
@@ -60,9 +37,7 @@ Board format:
           items: { type: "string" }
         }
       },
-      detectedRack: {
-        type: "string"
-      },
+      detectedRack: { type: "string" },
       topMoves: {
         type: "array",
         minItems: 3,
@@ -86,15 +61,32 @@ Board format:
     required: ["board", "detectedRack", "topMoves", "note"]
   };
 
+  const prompt = `
+You are a Scrabble board analysis engine.
+
+Analyse this screenshot and return JSON only.
+
+What to do:
+1. Detect the 15x15 board.
+2. Populate "board" with existing tiles. Use "" for empty squares.
+3. Detect the rack if visible. Supplied typed rack: "${rack || "not supplied"}".
+4. Recommend the top 3 best scoring Scrabble moves.
+5. Use zero-based row and column coordinates.
+6. Use direction "H" for across and "V" for down.
+7. If the board/rack is unclear, make the best estimate and say so in note.
+8. If a typed rack is supplied, prioritise it over visually detected rack letters.
+9. The app will highlight your returned coordinates, so make sure row/col/direction are usable.
+`;
+
   try {
-    const apiResponse = await fetch("https://api.openai.com/v1/responses", {
+    const apiRes = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Authorization": `Bearer ${apiKey}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: "gpt-4.1-mini",
+        model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
         input: [
           {
             role: "user",
@@ -115,37 +107,109 @@ Board format:
       })
     });
 
-    const raw = await apiResponse.text();
+    const raw = await apiRes.text();
 
-    if (!apiResponse.ok) {
-      return json(apiResponse.status, {
-        error: `OpenAI API error: ${raw.slice(0, 800)}`
+    if (!apiRes.ok) {
+      return send(apiRes.status, {
+        error: "OpenAI API error: " + raw.slice(0, 1200)
       });
     }
 
-    const result = JSON.parse(raw);
-    const text = result.output_text ||
-      result.output?.flatMap(item => item.content || [])
-        ?.find(content => content.type === "output_text")?.text;
-
-    if (!text) {
-      return json(500, { error: "The API returned no readable analysis." });
+    let outer;
+    try {
+      outer = JSON.parse(raw);
+    } catch {
+      return send(500, { error: "OpenAI returned non-JSON response: " + raw.slice(0, 500) });
     }
 
-    const parsed = JSON.parse(text);
-    return json(200, parsed);
-  } catch (error) {
-    return json(500, { error: error.message || "Unknown server error." });
+    const outputText = extractOutputText(outer);
+    if (!outputText) {
+      return send(500, { error: "OpenAI returned no output_text. Raw response: " + JSON.stringify(outer).slice(0, 1000) });
+    }
+
+    let parsed;
+    try {
+      parsed = JSON.parse(outputText);
+    } catch {
+      return send(500, { error: "Could not parse model JSON: " + outputText.slice(0, 1000) });
+    }
+
+    parsed = normalise(parsed);
+    return send(200, parsed);
+  } catch (err) {
+    return send(500, { error: err.message || "Unknown server error." });
   }
 };
 
-function json(statusCode, payload) {
+function extractOutputText(response) {
+  if (typeof response.output_text === "string") return response.output_text;
+
+  if (Array.isArray(response.output)) {
+    for (const item of response.output) {
+      if (Array.isArray(item.content)) {
+        for (const content of item.content) {
+          if (typeof content.text === "string") return content.text;
+          if (typeof content.output_text === "string") return content.output_text;
+        }
+      }
+    }
+  }
+
+  return "";
+}
+
+function normalise(data) {
+  const emptyRow = () => Array.from({ length: 15 }, () => "");
+  if (!Array.isArray(data.board)) data.board = Array.from({ length: 15 }, emptyRow);
+
+  data.board = data.board.slice(0, 15).map(row => {
+    const r = Array.isArray(row) ? row.slice(0, 15) : [];
+    while (r.length < 15) r.push("");
+    return r.map(v => {
+      const s = String(v || "").toUpperCase().replace(/[^A-Z]/g, "");
+      return s.slice(0, 1);
+    });
+  });
+  while (data.board.length < 15) data.board.push(emptyRow());
+
+  if (!Array.isArray(data.topMoves)) data.topMoves = [];
+  data.topMoves = data.topMoves.slice(0, 3).map(m => ({
+    word: String(m.word || "").toUpperCase().replace(/[^A-Z]/g, ""),
+    row: clamp(Number(m.row), 0, 14),
+    col: clamp(Number(m.col), 0, 14),
+    direction: String(m.direction || "H").toUpperCase().startsWith("V") || String(m.direction || "").toUpperCase().startsWith("D") ? "V" : "H",
+    score: Number(m.score || 0),
+    explanation: String(m.explanation || "")
+  }));
+
+  while (data.topMoves.length < 3) {
+    data.topMoves.push({
+      word: "UNKNOWN",
+      row: 7,
+      col: 7,
+      direction: "H",
+      score: 0,
+      explanation: "The model could not confidently identify enough move options."
+    });
+  }
+
+  data.detectedRack = String(data.detectedRack || "");
+  data.note = String(data.note || "Analysis complete.");
+  return data;
+}
+
+function clamp(n, min, max) {
+  if (!Number.isFinite(n)) return min;
+  return Math.max(min, Math.min(max, Math.round(n)));
+}
+
+function send(statusCode, body) {
   return {
     statusCode,
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*"
     },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(body)
   };
 }
