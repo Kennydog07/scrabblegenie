@@ -1,1 +1,332 @@
-<!doctype html><html><body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scrabble Solver</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #020617;
+      color: white;
+      padding: 30px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: auto;
+    }
+
+    h1 {
+      font-size: 48px;
+      margin-bottom: 5px;
+    }
+
+    p {
+      color: #94a3b8;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 24px;
+      margin-top: 30px;
+    }
+
+    .card {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 24px;
+      padding: 24px;
+    }
+
+    input[type="file"] {
+      display: block;
+      width: 100%;
+      padding: 18px;
+      background: white;
+      color: black;
+      border-radius: 16px;
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+
+    #preview {
+      width: 100%;
+      max-height: 420px;
+      object-fit: contain;
+      border-radius: 18px;
+      border: 1px solid #334155;
+      display: none;
+      background: #020617;
+      margin-bottom: 20px;
+    }
+
+    .empty-preview {
+      height: 300px;
+      border: 2px dashed #334155;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #64748b;
+      margin-bottom: 20px;
+    }
+
+    .board {
+      display: grid;
+      grid-template-columns: repeat(15, 1fr);
+      gap: 3px;
+      background: #1e293b;
+      padding: 6px;
+      border-radius: 16px;
+    }
+
+    .cell {
+      aspect-ratio: 1;
+      background: #020617;
+      border: 1px solid #334155;
+      border-radius: 5px;
+      text-align: center;
+      color: white;
+      font-weight: bold;
+      font-size: 16px;
+      text-transform: uppercase;
+    }
+
+    .cell.top1 { background: #34d399; color: black; }
+    .cell.top2 { background: #38bdf8; color: black; }
+    .cell.top3 { background: #fbbf24; color: black; }
+
+    .rack {
+      width: 100%;
+      padding: 18px;
+      border-radius: 16px;
+      border: 1px solid #334155;
+      background: #020617;
+      color: white;
+      font-size: 32px;
+      font-weight: bold;
+      letter-spacing: 8px;
+      box-sizing: border-box;
+      text-transform: uppercase;
+    }
+
+    button {
+      width: 100%;
+      padding: 18px;
+      margin-top: 16px;
+      border: none;
+      border-radius: 16px;
+      background: white;
+      color: black;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .move {
+      background: #020617;
+      border: 1px solid #334155;
+      border-radius: 18px;
+      padding: 18px;
+      margin-bottom: 14px;
+    }
+
+    .move-title {
+      display: flex;
+      justify-content: space-between;
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .move-detail {
+      color: #94a3b8;
+      margin-top: 8px;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        font-size: 36px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Scrabble Solver</h1>
+    <p>Upload a screenshot of your Scrabble board, enter your letters, then view the top suggested moves.</p>
+
+    <div class="layout">
+      <div class="card">
+        <h2>1. Upload Screenshot</h2>
+
+        <input id="screenshotUpload" type="file" accept="image/*" />
+
+        <img id="preview" alt="Uploaded Scrabble board screenshot" />
+
+        <div id="emptyPreview" class="empty-preview">
+          No screenshot uploaded yet
+        </div>
+
+        <h2>2. Correct / Enter Board Letters</h2>
+        <p>Click any square and type a letter.</p>
+
+        <div id="board" class="board"></div>
+      </div>
+
+      <div>
+        <div class="card">
+          <h2>3. Your Letters</h2>
+          <input id="rackInput" class="rack" maxlength="7" placeholder="RETSAIN" />
+          <button onclick="solveBoard()">Find Best Moves</button>
+        </div>
+
+        <div class="card" style="margin-top: 24px;">
+          <h2>Top 3 Moves</h2>
+          <div id="moves">
+            <p>No moves yet. Upload a screenshot, enter letters, then click Find Best Moves.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const boardEl = document.getElementById("board");
+    const uploadInput = document.getElementById("screenshotUpload");
+    const preview = document.getElementById("preview");
+    const emptyPreview = document.getElementById("emptyPreview");
+    const movesEl = document.getElementById("moves");
+
+    const WORDS = [
+      "QUIZ", "JAZZ", "QUICK", "PLAY", "WORD", "BOARD", "GAME",
+      "TILE", "SCORE", "STAR", "READ", "ROAD", "TRAIN", "RAIN",
+      "STONE", "HOUSE", "MOUSE", "BRAVE", "BRAIN", "CLEAR"
+    ];
+
+    const LETTER_SCORES = {
+      A:1,B:3,C:3,D:2,E:1,F:4,G:2,H:4,I:1,J:8,K:5,L:1,M:3,
+      N:1,O:1,P:3,Q:10,R:1,S:1,T:1,U:1,V:4,W:4,X:8,Y:4,Z:10
+    };
+
+    function createBoard() {
+      boardEl.innerHTML = "";
+
+      for (let i = 0; i < 225; i++) {
+        const input = document.createElement("input");
+        input.className = "cell";
+        input.maxLength = 1;
+        input.dataset.index = i;
+
+        input.addEventListener("input", function () {
+          this.value = this.value.toUpperCase().replace(/[^A-Z]/g, "");
+        });
+
+        boardEl.appendChild(input);
+      }
+    }
+
+    function handleScreenshotUpload(event) {
+      const file = event.target.files[0];
+
+      if (!file) {
+        preview.style.display = "none";
+        emptyPreview.style.display = "flex";
+        return;
+      }
+
+      const imageUrl = URL.createObjectURL(file);
+      preview.src = imageUrl;
+      preview.style.display = "block";
+      emptyPreview.style.display = "none";
+    }
+
+    function scoreWord(word) {
+      return word.split("").reduce((total, letter) => {
+        return total + (LETTER_SCORES[letter] || 0);
+      }, 0);
+    }
+
+    function canMakeWord(word, rack) {
+      const letters = rack.toUpperCase().split("");
+      for (const letter of word) {
+        const index = letters.indexOf(letter);
+        if (index === -1) return false;
+        letters.splice(index, 1);
+      }
+      return true;
+    }
+
+    function clearHighlights() {
+      document.querySelectorAll(".cell").forEach(cell => {
+        cell.classList.remove("top1", "top2", "top3");
+      });
+    }
+
+    function highlightDemoMove(rank) {
+      const classes = ["top1", "top2", "top3"];
+      const startIndexes = [112, 97, 127];
+
+      for (let i = 0; i < 4; i++) {
+        const cell = document.querySelector(`[data-index="${startIndexes[rank] + i}"]`);
+        if (cell) cell.classList.add(classes[rank]);
+      }
+    }
+
+    function solveBoard() {
+      clearHighlights();
+
+      const rack = document.getElementById("rackInput").value.toUpperCase().replace(/[^A-Z]/g, "");
+
+      if (!rack) {
+        movesEl.innerHTML = "<p>Please enter your rack letters first.</p>";
+        return;
+      }
+
+      const possibleMoves = WORDS
+        .filter(word => canMakeWord(word, rack))
+        .map(word => ({
+          word,
+          score: scoreWord(word),
+          position: "Suggested board position"
+        }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 3);
+
+      if (possibleMoves.length === 0) {
+        movesEl.innerHTML = "<p>No moves found with this small demo dictionary.</p>";
+        return;
+      }
+
+      movesEl.innerHTML = "";
+
+      possibleMoves.forEach((move, index) => {
+        highlightDemoMove(index);
+
+        const div = document.createElement("div");
+        div.className = "move";
+        div.innerHTML = `
+          <div class="move-title">
+            <span>#${index + 1} ${move.word}</span>
+            <span>${move.score} pts</span>
+          </div>
+          <div class="move-detail">${move.position}</div>
+        `;
+        movesEl.appendChild(div);
+      });
+    }
+
+    uploadInput.addEventListener("change", handleScreenshotUpload);
+
+    createBoard();
+  </script>
+</body>
+</html>
