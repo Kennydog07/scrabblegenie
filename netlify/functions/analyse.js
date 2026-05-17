@@ -181,6 +181,5 @@ Return ONLY valid JSON (no markdown fences, no preamble, no explanation outside 
 };
 
 export const config = {
-  path: '/api/analyse',
-  timeout: 26  // max allowed on Netlify free plan (seconds)
+  timeout: 26
 };
