@@ -361,33 +361,26 @@ function renderBoard(data,moveIdx){
 
   const selectorHtml=moves.length?`<div class="move-selector">${moves.map((mv,i)=>`<button class="move-sel-btn${selectedMove===i+1?' active':''}" data-move="${i+1}">#${i+1} ${esc(mv.word)} <span style="opacity:0.65">(${mv.estimatedScore})</span></button>`).join('')}</div>`:'';
 
-  // Build 15x15 cells
-  let cells='';
+  // Build board row by row
+  const colLabels='<div class="col-labels">'+COLS.map(c=>`<span>${c}</span>`).join('')+'</div>';
+  let rowsHtml='<div class="board-rows">';
   for(let r=1;r<=15;r++){
+    let rowCells='';
     for(let ci=0;ci<15;ci++){
       const col=COLS[ci];const key=col+''+r;
       const existing=existMap[key];const isNew=newMap[key];
       if(isNew){
         const val=LETTER_VALS[isNew]??'';
-        cells+=`<div class="cell new-tile" title="${key} ← YOUR TILE"><span class="cell-ltr">${esc(isNew)}</span>${val!==''?`<span class="cell-val">${val}</span>`:''}</div>`;
+        rowCells+=`<div class="cell new-tile" title="${key}"><span class="cell-ltr">${esc(isNew)}</span>${val!==''?'<span class="cell-val">'+val+'</span>':''}</div>`;
       }else if(existing){
         const val=LETTER_VALS[existing]??'';
-        cells+=`<div class="cell has-tile" title="${key}"><span class="cell-ltr">${esc(existing)}</span>${val!==''?`<span class="cell-val">${val}</span>`:''}</div>`;
+        rowCells+=`<div class="cell has-tile" title="${key}"><span class="cell-ltr">${esc(existing)}</span>${val!==''?'<span class="cell-val">'+val+'</span>':''}</div>`;
       }else{
         const pc=pClass(col,r);const lbl=pLabel(col,r);
-        cells+=`<div class="cell ${pc}" title="${key}">${lbl?`<span class="cell-lbl">${lbl}</span>`:''}</div>`;
+        rowCells+=`<div class="cell ${pc}" title="${key}">${lbl?'<span class="cell-lbl">'+lbl+'</span>':''}</div>`;
       }
     }
-  }
-
-  const colLabels='<div class="col-labels">'+COLS.map(c=>`<span>${c}</span>`).join('')+'</div>';
-
-  // Split cells into rows for row labels
-  const cellArr=cells.match(/<div class="cell[^"]*"[^>]*>[\s\S]*?<\/div>/g)||[];
-  let rowsHtml='<div class="board-rows">';
-  for(let r=1;r<=15;r++){
-    const rowCells=cellArr.slice((r-1)*15,r*15).join('');
-    rowsHtml+=`<div class="board-row"><span class="row-label">${r}</span><div class="board-grid">${rowCells}</div></div>`;
+    rowsHtml+=`<div class="board-row"><span class="row-label">${r}</span><div class="board-grid" style="display:grid;grid-template-columns:repeat(15,26px);grid-template-rows:26px">${rowCells}</div></div>`;
   }
   rowsHtml+='</div>';
 
@@ -445,6 +438,7 @@ function buildCard(mv,rank){
           <span class="mc mc-pos">${esc(mv.startCol||'?')}${mv.startRow||'?'}</span>
           <span class="mc mc-dir">${mv.direction==='down'?'↓ Down':'→ Across'}</span>
         </div>
+        ${mv.connectsTo?`<div style="font-size:0.62rem;color:var(--green-bright);margin-top:0.15rem">🔗 ${esc(mv.connectsTo)}</div>`:''}
         <div class="view-hint">Click to highlight on board →</div>
       </div>
       <div class="ms"><div class="sn">${mv.estimatedScore||0}</div><div class="sl">pts</div></div>
