@@ -850,7 +850,7 @@
     movesContainer.innerHTML = '<div class="empty-state"><span class="empty-icon" style="animation:spin 1.2s linear infinite;display:inline-block">🔮</span><p>Reading the board…</p></div>';
 
     try {
-      const res = await fetch('/api/analyse', {
+      const res = await fetch('/.netlify/functions/analyse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageBase64, mediaType, rackLetters: rack })
