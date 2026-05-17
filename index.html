@@ -1,59 +1,952 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<meta charset="utf-8">
-<title>Scrabble Solver Claude AI</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<style>
-body{margin:0;background:#020617;color:white;font-family:Arial;padding:24px}.wrap{max-width:1200px;margin:auto}
-h1{font-size:42px;margin:0 0 8px}.layout{display:grid;grid-template-columns:1fr 380px;gap:24px}.card{background:#0f172a;border:1px solid #1e293b;border-radius:22px;padding:20px;margin-bottom:20px}
-input[type=file]{width:100%;background:white;color:black;padding:15px;border-radius:14px;font-weight:bold}#preview{width:100%;max-height:480px;object-fit:contain;border:1px solid #334155;border-radius:16px;margin-top:15px;display:none}
-.board{display:grid;grid-template-columns:repeat(15,1fr);gap:3px;background:#1e293b;padding:6px;border-radius:16px;margin-top:15px}.cell{aspect-ratio:1;background:#020617;border:1px solid #334155;border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px}
-.m1{background:#34d399!important;color:#020617}.m2{background:#38bdf8!important;color:#020617}.m3{background:#fbbf24!important;color:#020617}.rack{width:100%;padding:16px;border-radius:14px;background:#020617;color:white;border:1px solid #334155;font-size:28px;font-weight:900;letter-spacing:6px}
-button{width:100%;padding:15px;border:0;border-radius:14px;background:#22c55e;color:#001b09;font-weight:900;margin-top:12px}.clear{background:#334155;color:white}.status{white-space:pre-wrap;overflow-wrap:anywhere;background:#172554;color:#bfdbfe;border:1px solid #2563eb;border-radius:14px;padding:12px;margin-top:12px}.err{background:#3f1224;color:#fecaca;border-color:#ef4444}.ok{background:#052e1a;color:#bbf7d0;border-color:#22c55e}
-.move{background:#020617;border:1px solid #334155;border-radius:14px;padding:14px;margin:10px 0}.top{display:flex;justify-content:space-between;font-size:20px;font-weight:900}.small{color:#94a3b8;font-size:13px}@media(max-width:900px){.layout{grid-template-columns:1fr}}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scrabble Genie ✦ AI Board Analyser</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #111810;
+      --surface:     #1a2418;
+      --surface2:    #22301f;
+      --border:      #2e4029;
+      --gold:        #d4a843;
+      --gold-dim:    #9b7830;
+      --cream:       #f0e6c8;
+      --cream-dim:   #c8b88a;
+      --green:       #4a7c59;
+      --green-bright:#6ab882;
+      --red:         #c0392b;
+      --blue:        #2980b9;
+      --blue-light:  #85c1e9;
+      --rank1:       #d4a843;
+      --rank2:       #adb5bd;
+      --rank3:       #cd7f32;
+      --text:        #e8dcc8;
+      --text-dim:    #8a9070;
+      --tile-bg:     #f0e0b0;
+      --tile-border: #a08040;
+      --tile-text:   #1a0e04;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      min-height: 100vh;
+      background-image:
+        radial-gradient(ellipse 80% 60% at 50% 0%, rgba(74,124,89,0.12) 0%, transparent 70%),
+        repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(46,64,41,0.15) 39px, rgba(46,64,41,0.15) 40px),
+        repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(46,64,41,0.15) 39px, rgba(46,64,41,0.15) 40px);
+    }
+
+    /* ── HEADER ── */
+    header {
+      text-align: center;
+      padding: 2.5rem 1rem 1.5rem;
+      position: relative;
+    }
+
+    .logo-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .logo-tiles {
+      display: flex;
+      gap: 3px;
+    }
+
+    .logo-tile {
+      width: 34px; height: 34px;
+      background: var(--tile-bg);
+      border: 2px solid var(--tile-border);
+      border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--tile-text);
+      box-shadow: 0 2px 0 var(--tile-border), 0 3px 6px rgba(0,0,0,0.4);
+      position: relative;
+    }
+
+    .logo-tile .val {
+      position: absolute;
+      bottom: 1px; right: 2px;
+      font-size: 0.38rem;
+      font-weight: 600;
+      color: #6b4c1a;
+    }
+
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(1.8rem, 5vw, 2.6rem);
+      color: var(--gold);
+      letter-spacing: -0.01em;
+      line-height: 1.1;
+    }
+
+    .tagline {
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-top: 0.3rem;
+    }
+
+    /* ── LAYOUT ── */
+    .app {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 1rem 3rem;
+      display: grid;
+      grid-template-columns: 400px 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    @media (max-width: 860px) {
+      .app { grid-template-columns: 1fr; }
+    }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 0.8rem 1.2rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: var(--surface2);
+    }
+
+    .card-header .icon {
+      width: 22px; height: 22px;
+      background: var(--gold);
+      border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.75rem;
+    }
+
+    .card-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--cream-dim);
+    }
+
+    .card-body { padding: 1.2rem; }
+
+    /* ── UPLOAD ZONE ── */
+    #drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      padding: 2rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+      background: rgba(74,124,89,0.03);
+    }
+
+    #drop-zone:hover, #drop-zone.drag-over {
+      border-color: var(--green);
+      background: rgba(74,124,89,0.08);
+    }
+
+    #drop-zone.has-image {
+      padding: 0;
+      border-style: solid;
+      border-color: var(--green);
+    }
+
+    .drop-icon {
+      font-size: 2.2rem;
+      margin-bottom: 0.6rem;
+      display: block;
+    }
+
+    .drop-text { font-size: 0.85rem; color: var(--text-dim); line-height: 1.5; }
+    .drop-text strong { color: var(--green-bright); font-weight: 500; }
+
+    #file-input { display: none; }
+
+    #preview-img {
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: 8px;
+    }
+
+    .clear-img-btn {
+      position: absolute;
+      top: 6px; right: 6px;
+      background: rgba(0,0,0,0.7);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #fff;
+      width: 26px; height: 26px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 0.75rem;
+      display: none;
+      align-items: center; justify-content: center;
+      z-index: 2;
+      transition: background 0.15s;
+    }
+
+    .clear-img-btn:hover { background: var(--red); }
+
+    #drop-zone.has-image .clear-img-btn { display: flex; }
+
+    /* ── RACK ── */
+    .rack-label {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.6rem;
+      font-weight: 500;
+    }
+
+    .rack-tiles {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .rack-tile-input {
+      width: 42px; height: 46px;
+      background: var(--tile-bg);
+      border: 2px solid var(--tile-border);
+      border-radius: 5px;
+      text-align: center;
+      font-family: 'DM Mono', monospace;
+      font-size: 1.2rem;
+      font-weight: 500;
+      color: var(--tile-text);
+      text-transform: uppercase;
+      box-shadow: 0 3px 0 #8a6020, 0 4px 8px rgba(0,0,0,0.3);
+      cursor: text;
+      outline: none;
+      transition: all 0.15s;
+      caret-color: transparent;
+      padding-bottom: 2px;
+    }
+
+    .rack-tile-input:focus {
+      border-color: var(--gold);
+      box-shadow: 0 3px 0 #8a6020, 0 0 0 3px rgba(212,168,67,0.3), 0 4px 8px rgba(0,0,0,0.3);
+      transform: translateY(-2px);
+    }
+
+    .rack-tile-input::placeholder { color: #c4a870; font-size: 0.85rem; }
+
+    .rack-clear-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      padding: 0.3rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: all 0.15s;
+      margin-left: auto;
+    }
+
+    .rack-clear-btn:hover { color: var(--text); border-color: var(--green); }
+
+    .rack-hint {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      margin-top: 0.4rem;
+    }
+
+    /* ── ANALYSE BUTTON ── */
+    .analyse-btn {
+      width: 100%;
+      margin-top: 1rem;
+      padding: 0.85rem;
+      background: linear-gradient(135deg, #4a7c59, #2e5c3a);
+      border: 1px solid var(--green);
+      border-radius: 10px;
+      color: #fff;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.04em;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .analyse-btn:hover:not(:disabled) {
+      background: linear-gradient(135deg, #5a9c6e, #3a7049);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(74,124,89,0.4);
+    }
+
+    .analyse-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .analyse-btn .btn-icon { font-size: 1.1rem; }
+
+    /* ── SPINNER ── */
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .analyse-btn.loading .spinner { display: block; }
+    .analyse-btn.loading .btn-text { display: none; }
+    .analyse-btn.loading .btn-icon { display: none; }
+
+    /* ── STATUS ── */
+    #status-bar {
+      margin-top: 0.6rem;
+      font-size: 0.76rem;
+      color: var(--text-dim);
+      text-align: center;
+      min-height: 1.1em;
+      transition: color 0.2s;
+    }
+
+    #status-bar.error { color: #e74c3c; }
+    #status-bar.success { color: var(--green-bright); }
+
+    /* ── RESULTS PANEL ── */
+    .results-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    #board-summary {
+      font-size: 0.82rem;
+      color: var(--text-dim);
+      line-height: 1.5;
+      padding: 0.8rem;
+      background: rgba(74,124,89,0.06);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      display: none;
+    }
+
+    #board-summary.visible { display: block; }
+    #board-summary strong { color: var(--cream-dim); font-weight: 500; }
+
+    /* ── MOVE CARDS ── */
+    #moves-container {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .move-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      animation: slideUp 0.3s ease both;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .move-card:nth-child(2) { animation-delay: 0.08s; }
+    .move-card:nth-child(3) { animation-delay: 0.16s; }
+
+    .move-card-top {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem 1.2rem;
+    }
+
+    .rank-badge {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700;
+      font-size: 0.95rem;
+      flex-shrink: 0;
+    }
+
+    .rank-1 { background: rgba(212,168,67,0.2); color: var(--rank1); border: 2px solid var(--rank1); }
+    .rank-2 { background: rgba(173,181,189,0.2); color: var(--rank2); border: 2px solid var(--rank2); }
+    .rank-3 { background: rgba(205,127,50,0.2);  color: var(--rank3); border: 2px solid var(--rank3); }
+
+    .move-word-section { flex: 1; min-width: 0; }
+
+    .move-word {
+      font-family: 'DM Mono', monospace;
+      font-size: 1.4rem;
+      font-weight: 500;
+      color: var(--cream);
+      letter-spacing: 0.06em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .bingo-badge {
+      font-size: 0.65rem;
+      font-family: 'DM Sans', sans-serif;
+      background: linear-gradient(135deg, #d4a843, #c87020);
+      color: #1a0e04;
+      padding: 0.15rem 0.5rem;
+      border-radius: 20px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      display: none;
+    }
+
+    .bingo-badge.show { display: inline-block; }
+
+    .move-meta {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.25rem;
+      flex-wrap: wrap;
+    }
+
+    .meta-chip {
+      font-size: 0.7rem;
+      padding: 0.15rem 0.5rem;
+      border-radius: 20px;
+      border: 1px solid;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+    }
+
+    .chip-pos  { color: var(--blue-light);   border-color: rgba(133,193,233,0.3);  background: rgba(41,128,185,0.1); }
+    .chip-dir  { color: var(--green-bright); border-color: rgba(106,184,130,0.3);  background: rgba(74,124,89,0.1); }
+    .chip-tiles { color: var(--cream-dim);   border-color: rgba(200,184,138,0.3);  background: rgba(240,230,200,0.05); }
+
+    .move-score {
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .score-num {
+      font-family: 'Playfair Display', serif;
+      font-size: 2rem;
+      font-weight: 600;
+      line-height: 1;
+    }
+
+    .rank-1 ~ .move-score .score-num,
+    .move-card:first-child .score-num { color: var(--gold); }
+    .move-card:nth-child(2) .score-num { color: var(--rank2); }
+    .move-card:nth-child(3) .score-num { color: var(--rank3); }
+
+    .score-label { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; }
+
+    .move-card-body {
+      border-top: 1px solid var(--border);
+      padding: 0.9rem 1.2rem;
+    }
+
+    .breakdown-label {
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      margin-bottom: 0.3rem;
+      font-weight: 600;
+    }
+
+    .breakdown-text {
+      font-size: 0.78rem;
+      color: var(--cream-dim);
+      font-family: 'DM Mono', monospace;
+      margin-bottom: 0.8rem;
+      line-height: 1.5;
+    }
+
+    .reasoning-text {
+      font-size: 0.82rem;
+      color: var(--text-dim);
+      line-height: 1.6;
+    }
+
+    /* ── TILES DISPLAY ── */
+    .tiles-display {
+      display: flex;
+      gap: 3px;
+      flex-wrap: wrap;
+      margin: 0.5rem 0;
+    }
+
+    .mini-tile {
+      width: 28px; height: 30px;
+      background: var(--tile-bg);
+      border: 1px solid var(--tile-border);
+      border-radius: 3px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'DM Mono', monospace;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--tile-text);
+      box-shadow: 0 2px 0 var(--tile-border);
+      position: relative;
+    }
+
+    .mini-tile.existing {
+      background: #dde4c0;
+      border-color: #7a8a50;
+      box-shadow: 0 2px 0 #7a8a50;
+    }
+
+    .mini-tile.blank {
+      background: #f0e0b0;
+      border-color: #c0a060;
+    }
+
+    /* ── EMPTY STATE ── */
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--text-dim);
+    }
+
+    .empty-state .empty-icon {
+      font-size: 3rem;
+      margin-bottom: 0.8rem;
+      display: block;
+      opacity: 0.4;
+    }
+
+    .empty-state p { font-size: 0.85rem; line-height: 1.6; }
+
+    /* ── CROSSWORDS ── */
+    .crossword-section {
+      margin-top: 0.5rem;
+      padding-top: 0.5rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .crossword-chips {
+      display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.25rem;
+    }
+
+    .crossword-chip {
+      font-size: 0.72rem;
+      font-family: 'DM Mono', monospace;
+      background: rgba(74,124,89,0.12);
+      border: 1px solid rgba(74,124,89,0.3);
+      color: var(--green-bright);
+      padding: 0.1rem 0.45rem;
+      border-radius: 4px;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      text-align: center;
+      padding: 1.5rem;
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      border-top: 1px solid var(--border);
+      margin-top: 2rem;
+    }
+
+    footer span { color: var(--gold-dim); }
+  </style>
 </head>
 <body>
-<div class="wrap">
-<h1>Scrabble Solver Claude AI</h1>
-<p class="small">Upload a screenshot. The app automatically calls Claude, populates the board and shows three move options.</p>
-<div class="layout">
-<main class="card">
-<h2>1. Upload screenshot</h2>
-<input id="upload" type="file" accept="image/*">
-<img id="preview">
-<h2>Detected board + move highlights</h2>
-<div id="board" class="board"></div>
+
+<header>
+  <div class="logo-row">
+    <div class="logo-tiles">
+      <div class="logo-tile">S<span class="val">1</span></div>
+      <div class="logo-tile">G<span class="val">2</span></div>
+    </div>
+    <h1>Scrabble Genie</h1>
+    <div class="logo-tiles">
+      <div class="logo-tile">A<span class="val">1</span></div>
+      <div class="logo-tile">I<span class="val">1</span></div>
+    </div>
+  </div>
+  <p class="tagline">AI-powered board analyser &mdash; Top 3 plays, instantly</p>
+</header>
+
+<main class="app">
+
+  <!-- ── LEFT PANEL ── -->
+  <div>
+    <!-- Upload -->
+    <div class="card" style="margin-bottom:1rem">
+      <div class="card-header">
+        <div class="icon">📷</div>
+        <span class="card-title">Board Screenshot</span>
+      </div>
+      <div class="card-body">
+        <div id="drop-zone">
+          <span class="drop-icon">🎲</span>
+          <p class="drop-text">
+            <strong>Drag & drop</strong> your Scrabble board screenshot here,<br>
+            or <strong>click to browse</strong>
+          </p>
+          <input type="file" id="file-input" accept="image/*">
+          <button class="clear-img-btn" id="clear-img-btn" title="Remove image">✕</button>
+          <img id="preview-img" alt="Board preview" style="display:none">
+        </div>
+      </div>
+    </div>
+
+    <!-- Rack -->
+    <div class="card" style="margin-bottom:1rem">
+      <div class="card-header">
+        <div class="icon">🔠</div>
+        <span class="card-title">Your Rack Letters</span>
+      </div>
+      <div class="card-body">
+        <div class="rack-label">Enter up to 7 tiles (? or _ for blank)</div>
+        <div class="rack-tiles">
+          <input class="rack-tile-input" id="t0" maxlength="1" placeholder="A" autocomplete="off" spellcheck="false">
+          <input class="rack-tile-input" id="t1" maxlength="1" placeholder="B" autocomplete="off" spellcheck="false">
+          <input class="rack-tile-input" id="t2" maxlength="1" placeholder="C" autocomplete="off" spellcheck="false">
+          <input class="rack-tile-input" id="t3" maxlength="1" placeholder="D" autocomplete="off" spellcheck="false">
+          <input class="rack-tile-input" id="t4" maxlength="1" placeholder="E" autocomplete="off" spellcheck="false">
+          <input class="rack-tile-input" id="t5" maxlength="1" placeholder="F" autocomplete="off" spellcheck="false">
+          <input class="rack-tile-input" id="t6" maxlength="1" placeholder="G" autocomplete="off" spellcheck="false">
+          <button class="rack-clear-btn" id="clear-rack-btn">Clear rack</button>
+        </div>
+        <p class="rack-hint">Use ? or _ for a blank tile</p>
+      </div>
+    </div>
+
+    <!-- Analyse Button -->
+    <button class="analyse-btn" id="analyse-btn" disabled>
+      <span class="btn-icon">✨</span>
+      <span class="btn-text">Analyse Board</span>
+      <div class="spinner"></div>
+    </button>
+    <div id="status-bar">Upload a board screenshot to begin</div>
+  </div>
+
+  <!-- ── RIGHT PANEL ── -->
+  <div class="card">
+    <div class="card-header results-header">
+      <div style="display:flex;align-items:center;gap:0.6rem">
+        <div class="icon">🏆</div>
+        <span class="card-title">Top 3 Moves</span>
+      </div>
+      <span id="rack-display" style="font-family:'DM Mono',monospace;font-size:0.8rem;color:var(--cream-dim);"></span>
+    </div>
+    <div class="card-body">
+      <div id="board-summary"></div>
+
+      <div id="moves-container">
+        <div class="empty-state">
+          <span class="empty-icon">🧩</span>
+          <p>Upload your Scrabble board and enter your rack letters.<br>The Genie will find your top 3 plays with scores and reasoning.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </main>
-<aside>
-<section class="card">
-<h2>Rack letters</h2>
-<p class="small">Type your letters before uploading if possible.</p>
-<input id="rack" class="rack" maxlength="7" placeholder="RETSAIN">
-<button id="again">Re-analyse Screenshot</button>
-<button id="clear" class="clear">Clear</button>
-<div id="status" class="status">Ready. Upload a screenshot to start.</div>
-</section>
-<section class="card"><h2>Top 3 options</h2><div id="results"><p class="small">No analysis yet.</p></div></section>
-<section class="card"><h2>Setup</h2><div class="status">Required Netlify variable: ANTHROPIC_API_KEY</div></section>
-</aside>
-</div>
-</div>
+
+<footer>
+  Scrabble Genie &mdash; powered by <span>Claude AI</span> &mdash; for entertainment purposes
+</footer>
+
 <script>
-const upload=document.getElementById('upload'),preview=document.getElementById('preview'),board=document.getElementById('board'),rack=document.getElementById('rack'),statusBox=document.getElementById('status'),results=document.getElementById('results'),again=document.getElementById('again'),clearBtn=document.getElementById('clear');
-let imgData='';
-function status(t,type=''){statusBox.textContent=t;statusBox.className='status '+(type==='err'?'err':type==='ok'?'ok':'')}
-function makeBoard(){board.innerHTML='';for(let r=0;r<15;r++)for(let c=0;c<15;c++){let d=document.createElement('div');d.className='cell';d.dataset.r=r;d.dataset.c=c;board.appendChild(d)}}
-function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
-function draw(data){makeBoard();let b=Array.isArray(data.board)?data.board:[];for(let r=0;r<15;r++)for(let c=0;c<15;c++){let cell=document.querySelector(`[data-r="${r}"][data-c="${c}"]`);if(cell)cell.textContent=String(b?.[r]?.[c]||'').toUpperCase().replace(/[^A-Z]/g,'').slice(0,1)}
-let moves=Array.isArray(data.topMoves)?data.topMoves.slice(0,3):[];moves.forEach((m,i)=>{let cls=['m1','m2','m3'][i],w=String(m.word||'').toUpperCase(),dir=String(m.direction||'H').toUpperCase()==='V'?'V':'H',row=Number(m.row),col=Number(m.col);for(let j=0;j<w.length;j++){let r=row+(dir==='V'?j:0),c=col+(dir==='H'?j:0),cell=document.querySelector(`[data-r="${r}"][data-c="${c}"]`);if(cell){cell.classList.add(cls);cell.textContent=w[j]}}});
-results.innerHTML=moves.length?moves.map((m,i)=>`<div class="move"><div class="top"><span>#${i+1} ${esc(m.word)}</span><span>${esc(m.score)} pts</span></div><div class="small">Row ${Number(m.row)+1}, Column ${Number(m.col)+1} · ${esc(m.direction)}<br>${esc(m.explanation)}</div></div>`).join(''):'<p>No moves returned.</p>'}
-function resize(file,max=800,q=.65){return new Promise((res,rej)=>{let rd=new FileReader();rd.onload=()=>{let im=new Image();im.onload=()=>{let sc=Math.min(1,max/Math.max(im.width,im.height)),cv=document.createElement('canvas');cv.width=Math.round(im.width*sc);cv.height=Math.round(im.height*sc);cv.getContext('2d').drawImage(im,0,0,cv.width,cv.height);res(cv.toDataURL('image/jpeg',q))};im.onerror=()=>rej(Error('Could not load image'));im.src=rd.result};rd.onerror=()=>rej(Error('Could not read image'));rd.readAsDataURL(file)})}
-async function analyse(){if(!imgData){status('Upload a screenshot first.','err');return}again.disabled=true;again.textContent='Analysing...';results.innerHTML='<p>Analysing...</p>';status('Sending screenshot to Claude Haiku...');
-try{let r=await fetch('/.netlify/functions/analyse-board',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({image:imgData,rack:rack.value.toUpperCase().replace(/[^A-Z?]/g,'')})});let txt=await r.text();let data;try{data=JSON.parse(txt)}catch(e){throw Error('Server did not return JSON: '+txt.slice(0,400))}if(!r.ok)throw Error(data.error||'API failed');draw(data);status(data.note||'Done. Board populated and moves highlighted.','ok')}catch(e){results.innerHTML='<p>Analysis failed.</p>';status('Analysis failed:\n'+e.message+'\n\nIf you see 502, wait one minute and press Re-analyse.','err')}finally{again.disabled=false;again.textContent='Re-analyse Screenshot'}}
-upload.onchange=async()=>{let f=upload.files[0];if(!f)return;status('Preparing image...');imgData=await resize(f);preview.src=imgData;preview.style.display='block';analyse()}
-again.onclick=analyse;clearBtn.onclick=()=>{imgData='';upload.value='';preview.style.display='none';rack.value='';results.innerHTML='<p>No analysis yet.</p>';makeBoard();status('Cleared. Upload a screenshot.')};makeBoard();
+  // ── State ──
+  let imageBase64 = null;
+  let mediaType = 'image/jpeg';
+
+  // ── Elements ──
+  const dropZone    = document.getElementById('drop-zone');
+  const fileInput   = document.getElementById('file-input');
+  const previewImg  = document.getElementById('preview-img');
+  const clearImgBtn = document.getElementById('clear-img-btn');
+  const analyseBtn  = document.getElementById('analyse-btn');
+  const statusBar   = document.getElementById('status-bar');
+  const movesContainer = document.getElementById('moves-container');
+  const boardSummary   = document.getElementById('board-summary');
+  const rackDisplay    = document.getElementById('rack-display');
+  const clearRackBtn   = document.getElementById('clear-rack-btn');
+  const tileInputs     = [...document.querySelectorAll('.rack-tile-input')];
+
+  // ── Image Upload ──
+  dropZone.addEventListener('click', (e) => {
+    if (e.target === clearImgBtn) return;
+    fileInput.click();
+  });
+
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('drag-over');
+  });
+
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) loadImage(file);
+  });
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) loadImage(fileInput.files[0]);
+  });
+
+  clearImgBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    clearImage();
+  });
+
+  function loadImage(file) {
+    mediaType = file.type || 'image/jpeg';
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target.result;
+      imageBase64 = dataUrl.split(',')[1];
+      previewImg.src = dataUrl;
+      previewImg.style.display = 'block';
+      dropZone.classList.add('has-image');
+      dropZone.querySelector('.drop-icon').style.display = 'none';
+      dropZone.querySelector('.drop-text').style.display = 'none';
+      updateAnalyseBtn();
+      setStatus('Image loaded — enter your rack letters and click Analyse', '');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function clearImage() {
+    imageBase64 = null;
+    previewImg.src = '';
+    previewImg.style.display = 'none';
+    dropZone.classList.remove('has-image');
+    dropZone.querySelector('.drop-icon').style.display = '';
+    dropZone.querySelector('.drop-text').style.display = '';
+    fileInput.value = '';
+    updateAnalyseBtn();
+    setStatus('Upload a board screenshot to begin', '');
+  }
+
+  // ── Rack Inputs ──
+  tileInputs.forEach((input, i) => {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !input.value && i > 0) {
+        tileInputs[i - 1].focus();
+      }
+      if (e.key === 'ArrowLeft' && i > 0) tileInputs[i - 1].focus();
+      if (e.key === 'ArrowRight' && i < 6) tileInputs[i + 1].focus();
+    });
+    input.addEventListener('input', () => {
+      // Sanitise: only letters, ? or _
+      const val = input.value.replace(/[^a-zA-Z?_]/g, '').slice(-1);
+      input.value = val.toUpperCase();
+      if (val && i < 6) tileInputs[i + 1].focus();
+      updateRackDisplay();
+    });
+    input.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const pasted = e.clipboardData.getData('text').toUpperCase().replace(/[^A-Z?_]/g, '');
+      pasted.split('').forEach((ch, j) => {
+        if (i + j < 7) tileInputs[i + j].value = ch;
+      });
+      const next = Math.min(i + pasted.length, 6);
+      tileInputs[next].focus();
+      updateRackDisplay();
+    });
+  });
+
+  clearRackBtn.addEventListener('click', () => {
+    tileInputs.forEach(t => t.value = '');
+    tileInputs[0].focus();
+    updateRackDisplay();
+  });
+
+  function getRack() {
+    return tileInputs.map(t => t.value).join('');
+  }
+
+  function updateRackDisplay() {
+    const rack = getRack();
+    rackDisplay.textContent = rack ? `Rack: ${rack.split('').join(' ')}` : '';
+  }
+
+  // ── Analyse Button State ──
+  function updateAnalyseBtn() {
+    analyseBtn.disabled = !imageBase64;
+  }
+
+  function setStatus(msg, type = '') {
+    statusBar.textContent = msg;
+    statusBar.className = type;
+  }
+
+  function setLoading(on) {
+    if (on) {
+      analyseBtn.classList.add('loading');
+      analyseBtn.disabled = true;
+    } else {
+      analyseBtn.classList.remove('loading');
+      analyseBtn.disabled = !imageBase64;
+    }
+  }
+
+  // ── Analyse ──
+  analyseBtn.addEventListener('click', async () => {
+    if (!imageBase64) return;
+
+    const rack = getRack();
+    setLoading(true);
+    setStatus('Consulting the Genie… analysing your board…', '');
+    boardSummary.classList.remove('visible');
+    movesContainer.innerHTML = '<div class="empty-state"><span class="empty-icon" style="animation:spin 1.2s linear infinite;display:inline-block">🔮</span><p>Reading the board…</p></div>';
+
+    try {
+      const res = await fetch('/api/analyse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64, mediaType, rackLetters: rack })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || data.error) {
+        throw new Error(data.error || `Server error ${res.status}`);
+      }
+
+      renderResults(data);
+      setStatus('Analysis complete ✓', 'success');
+
+    } catch (err) {
+      setStatus(`Error: ${err.message}`, 'error');
+      movesContainer.innerHTML = `
+        <div class="empty-state">
+          <span class="empty-icon">⚠️</span>
+          <p>${err.message}</p>
+        </div>`;
+    } finally {
+      setLoading(false);
+    }
+  });
+
+  // ── Render Results ──
+  function renderResults(data) {
+    // Board summary
+    if (data.boardSummary) {
+      boardSummary.innerHTML = `<strong>Board:</strong> ${escHtml(data.boardSummary)}`;
+      boardSummary.classList.add('visible');
+    }
+
+    // Rack display
+    if (data.rack) {
+      rackDisplay.textContent = `Rack: ${data.rack.split('').join(' ')}`;
+    }
+
+    const moves = data.moves || [];
+    if (!moves.length) {
+      movesContainer.innerHTML = '<div class="empty-state"><span class="empty-icon">🤔</span><p>No moves found. Try different rack letters.</p></div>';
+      return;
+    }
+
+    movesContainer.innerHTML = '';
+    moves.forEach((move, idx) => {
+      movesContainer.appendChild(buildMoveCard(move, idx + 1));
+    });
+  }
+
+  function buildMoveCard(move, fallbackRank) {
+    const rank = move.rank || fallbackRank;
+    const rankClass = `rank-${Math.min(rank, 3)}`;
+
+    // Build tile letters display
+    const rackTiles = move.rackTilesUsed || [];
+    const existingTiles = move.existingTilesUsed || [];
+    const allTilesHtml = rackTiles.map(l => `<div class="mini-tile${l === '?' || l === '_' ? ' blank' : ''}">${l === '?' || l === '_' ? '?' : escHtml(l)}</div>`).join('') +
+      existingTiles.map(l => `<div class="mini-tile existing" title="Already on board">${escHtml(l)}</div>`).join('');
+
+    const crossWordsHtml = (move.crossWords || []).length ? `
+      <div class="crossword-section">
+        <div class="breakdown-label">Also forms</div>
+        <div class="crossword-chips">
+          ${move.crossWords.map(w => `<span class="crossword-chip">${escHtml(w)}</span>`).join('')}
+        </div>
+      </div>` : '';
+
+    const card = document.createElement('div');
+    card.className = 'move-card';
+    card.innerHTML = `
+      <div class="move-card-top">
+        <div class="rank-badge ${rankClass}">${rank}</div>
+        <div class="move-word-section">
+          <div class="move-word">
+            ${escHtml(move.word || '?')}
+            <span class="bingo-badge ${move.isBingo ? 'show' : ''}">BINGO +50</span>
+          </div>
+          <div class="move-meta">
+            <span class="meta-chip chip-pos">${escHtml(move.position || '?')}</span>
+            <span class="meta-chip chip-dir">${move.direction === 'down' ? '↓ Down' : '→ Across'}</span>
+            ${allTilesHtml ? `<span class="meta-chip chip-tiles">${rackTiles.length} tile${rackTiles.length !== 1 ? 's' : ''} played</span>` : ''}
+          </div>
+        </div>
+        <div class="move-score">
+          <div class="score-num">${move.estimatedScore || 0}</div>
+          <div class="score-label">pts</div>
+        </div>
+      </div>
+      ${allTilesHtml ? `<div style="padding:0 1.2rem 0.4rem;"><div class="tiles-display">${allTilesHtml}</div></div>` : ''}
+      <div class="move-card-body">
+        ${move.scoreBreakdown ? `<div class="breakdown-label">Score Breakdown</div>
+        <div class="breakdown-text">${escHtml(move.scoreBreakdown)}</div>` : ''}
+        ${crossWordsHtml}
+        ${move.reasoning ? `<div class="breakdown-label" style="margin-top:${move.scoreBreakdown || move.crossWords?.length ? '0.5rem' : '0'}">Why this play</div>
+        <div class="reasoning-text">${escHtml(move.reasoning)}</div>` : ''}
+      </div>
+    `;
+    return card;
+  }
+
+  function escHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
 </script>
 </body>
 </html>
