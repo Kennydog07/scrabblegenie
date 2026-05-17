@@ -4,638 +4,174 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Scrabble Genie ✦ AI Board Analyser</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --bg:          #111810;
-      --surface:     #1a2418;
-      --surface2:    #22301f;
-      --border:      #2e4029;
-      --gold:        #d4a843;
-      --gold-dim:    #9b7830;
-      --cream:       #f0e6c8;
-      --cream-dim:   #c8b88a;
-      --green:       #4a7c59;
-      --green-bright:#6ab882;
-      --red:         #c0392b;
-      --blue:        #2980b9;
-      --blue-light:  #85c1e9;
-      --rank1:       #d4a843;
-      --rank2:       #adb5bd;
-      --rank3:       #cd7f32;
-      --text:        #e8dcc8;
-      --text-dim:    #8a9070;
-      --tile-bg:     #f0e0b0;
-      --tile-border: #a08040;
-      --tile-text:   #1a0e04;
+      --bg:#0f1a0d;--surface:#162014;--surface2:#1d2b1a;--border:#2a3d26;
+      --gold:#d4a843;--gold-dim:#9b7830;--cream:#f0e6c8;--cream-dim:#c8b88a;
+      --green:#4a7c59;--green-bright:#6ab882;--red:#c0392b;--blue-light:#85c1e9;
+      --text:#e8dcc8;--text-dim:#7a8868;
+      --rank1:#d4a843;--rank2:#adb5bd;--rank3:#cd7f32;
+      --tile-bg:#f0e0b0;--tile-border:#a08040;--tile-text:#1a0e04;
+      --tws:#c0392b;--dws:#e8a0a0;--tls:#2471a3;--dls:#85c1e9;--board-bg:#c8ddb8;--board-line:#9ab888;
     }
-
-    html { scroll-behavior: smooth; }
-
-    body {
-      background-color: var(--bg);
-      color: var(--text);
-      font-family: 'DM Sans', sans-serif;
-      min-height: 100vh;
-      background-image:
-        radial-gradient(ellipse 80% 60% at 50% 0%, rgba(74,124,89,0.12) 0%, transparent 70%),
-        repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(46,64,41,0.15) 39px, rgba(46,64,41,0.15) 40px),
-        repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(46,64,41,0.15) 39px, rgba(46,64,41,0.15) 40px);
-    }
-
-    /* ── HEADER ── */
-    header {
-      text-align: center;
-      padding: 2.5rem 1rem 1.5rem;
-      position: relative;
-    }
-
-    .logo-row {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.75rem;
-      margin-bottom: 0.4rem;
-    }
-
-    .logo-tiles {
-      display: flex;
-      gap: 3px;
-    }
-
-    .logo-tile {
-      width: 34px; height: 34px;
-      background: var(--tile-bg);
-      border: 2px solid var(--tile-border);
-      border-radius: 4px;
-      display: flex; align-items: center; justify-content: center;
-      font-family: 'DM Mono', monospace;
-      font-size: 0.9rem;
-      font-weight: 500;
-      color: var(--tile-text);
-      box-shadow: 0 2px 0 var(--tile-border), 0 3px 6px rgba(0,0,0,0.4);
-      position: relative;
-    }
-
-    .logo-tile .val {
-      position: absolute;
-      bottom: 1px; right: 2px;
-      font-size: 0.38rem;
-      font-weight: 600;
-      color: #6b4c1a;
-    }
-
-    h1 {
-      font-family: 'Playfair Display', serif;
-      font-size: clamp(1.8rem, 5vw, 2.6rem);
-      color: var(--gold);
-      letter-spacing: -0.01em;
-      line-height: 1.1;
-    }
-
-    .tagline {
-      font-size: 0.85rem;
-      color: var(--text-dim);
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      margin-top: 0.3rem;
-    }
-
-    /* ── LAYOUT ── */
-    .app {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 1rem 3rem;
-      display: grid;
-      grid-template-columns: 400px 1fr;
-      gap: 1.5rem;
-      align-items: start;
-    }
-
-    @media (max-width: 860px) {
-      .app { grid-template-columns: 1fr; }
-    }
-
-    /* ── CARD ── */
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-    }
-
-    .card-header {
-      padding: 0.8rem 1.2rem;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-      background: var(--surface2);
-    }
-
-    .card-header .icon {
-      width: 22px; height: 22px;
-      background: var(--gold);
-      border-radius: 4px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 0.75rem;
-    }
-
-    .card-title {
-      font-size: 0.8rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--cream-dim);
-    }
-
-    .card-body { padding: 1.2rem; }
-
-    /* ── UPLOAD ZONE ── */
-    #drop-zone {
-      border: 2px dashed var(--border);
-      border-radius: 10px;
-      padding: 2rem 1rem;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      position: relative;
-      background: rgba(74,124,89,0.03);
-    }
-
-    #drop-zone:hover, #drop-zone.drag-over {
-      border-color: var(--green);
-      background: rgba(74,124,89,0.08);
-    }
-
-    #drop-zone.has-image {
-      padding: 0;
-      border-style: solid;
-      border-color: var(--green);
-    }
-
-    .drop-icon {
-      font-size: 2.2rem;
-      margin-bottom: 0.6rem;
-      display: block;
-    }
-
-    .drop-text { font-size: 0.85rem; color: var(--text-dim); line-height: 1.5; }
-    .drop-text strong { color: var(--green-bright); font-weight: 500; }
-
-    #file-input { display: none; }
-
-    #preview-img {
-      width: 100%;
-      height: auto;
-      display: block;
-      border-radius: 8px;
-    }
-
-    .clear-img-btn {
-      position: absolute;
-      top: 6px; right: 6px;
-      background: rgba(0,0,0,0.7);
-      border: 1px solid rgba(255,255,255,0.2);
-      color: #fff;
-      width: 26px; height: 26px;
-      border-radius: 50%;
-      cursor: pointer;
-      font-size: 0.75rem;
-      display: none;
-      align-items: center; justify-content: center;
-      z-index: 2;
-      transition: background 0.15s;
-    }
-
-    .clear-img-btn:hover { background: var(--red); }
-
-    #drop-zone.has-image .clear-img-btn { display: flex; }
-
-    /* ── RACK ── */
-    .rack-label {
-      font-size: 0.78rem;
-      color: var(--text-dim);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-bottom: 0.6rem;
-      font-weight: 500;
-    }
-
-    .rack-tiles {
-      display: flex;
-      gap: 6px;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-
-    .rack-tile-input {
-      width: 42px; height: 46px;
-      background: var(--tile-bg);
-      border: 2px solid var(--tile-border);
-      border-radius: 5px;
-      text-align: center;
-      font-family: 'DM Mono', monospace;
-      font-size: 1.2rem;
-      font-weight: 500;
-      color: var(--tile-text);
-      text-transform: uppercase;
-      box-shadow: 0 3px 0 #8a6020, 0 4px 8px rgba(0,0,0,0.3);
-      cursor: text;
-      outline: none;
-      transition: all 0.15s;
-      caret-color: transparent;
-      padding-bottom: 2px;
-    }
-
-    .rack-tile-input:focus {
-      border-color: var(--gold);
-      box-shadow: 0 3px 0 #8a6020, 0 0 0 3px rgba(212,168,67,0.3), 0 4px 8px rgba(0,0,0,0.3);
-      transform: translateY(-2px);
-    }
-
-    .rack-tile-input::placeholder { color: #c4a870; font-size: 0.85rem; }
-
-    .rack-clear-btn {
-      background: none;
-      border: 1px solid var(--border);
-      color: var(--text-dim);
-      padding: 0.3rem 0.6rem;
-      border-radius: 6px;
-      font-size: 0.72rem;
-      cursor: pointer;
-      font-family: 'DM Sans', sans-serif;
-      transition: all 0.15s;
-      margin-left: auto;
-    }
-
-    .rack-clear-btn:hover { color: var(--text); border-color: var(--green); }
-
-    .rack-hint {
-      font-size: 0.72rem;
-      color: var(--text-dim);
-      margin-top: 0.4rem;
-    }
-
-    /* ── ANALYSE BUTTON ── */
-    .analyse-btn {
-      width: 100%;
-      margin-top: 1rem;
-      padding: 0.85rem;
-      background: linear-gradient(135deg, #4a7c59, #2e5c3a);
-      border: 1px solid var(--green);
-      border-radius: 10px;
-      color: #fff;
-      font-family: 'DM Sans', sans-serif;
-      font-size: 0.95rem;
-      font-weight: 600;
-      cursor: pointer;
-      letter-spacing: 0.04em;
-      transition: all 0.2s;
-      position: relative;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-    }
-
-    .analyse-btn:hover:not(:disabled) {
-      background: linear-gradient(135deg, #5a9c6e, #3a7049);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 16px rgba(74,124,89,0.4);
-    }
-
-    .analyse-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .analyse-btn .btn-icon { font-size: 1.1rem; }
-
-    /* ── SPINNER ── */
-    .spinner {
-      width: 18px; height: 18px;
-      border: 2px solid rgba(255,255,255,0.3);
-      border-top-color: #fff;
-      border-radius: 50%;
-      animation: spin 0.7s linear infinite;
-      display: none;
-    }
-
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    .analyse-btn.loading .spinner { display: block; }
-    .analyse-btn.loading .btn-text { display: none; }
-    .analyse-btn.loading .btn-icon { display: none; }
-
-    /* ── STATUS ── */
-    #status-bar {
-      margin-top: 0.6rem;
-      font-size: 0.76rem;
-      color: var(--text-dim);
-      text-align: center;
-      min-height: 1.1em;
-      transition: color 0.2s;
-    }
-
-    #status-bar.error { color: #e74c3c; }
-    #status-bar.success { color: var(--green-bright); }
-
-    /* ── RESULTS PANEL ── */
-    .results-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    #board-summary {
-      font-size: 0.82rem;
-      color: var(--text-dim);
-      line-height: 1.5;
-      padding: 0.8rem;
-      background: rgba(74,124,89,0.06);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      margin-bottom: 1rem;
-      display: none;
-    }
-
-    #board-summary.visible { display: block; }
-    #board-summary strong { color: var(--cream-dim); font-weight: 500; }
-
-    /* ── MOVE CARDS ── */
-    #moves-container {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-    }
-
-    .move-card {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      overflow: hidden;
-      animation: slideUp 0.3s ease both;
-    }
-
-    @keyframes slideUp {
-      from { opacity: 0; transform: translateY(12px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    .move-card:nth-child(2) { animation-delay: 0.08s; }
-    .move-card:nth-child(3) { animation-delay: 0.16s; }
-
-    .move-card-top {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      padding: 1rem 1.2rem;
-    }
-
-    .rank-badge {
-      width: 36px; height: 36px;
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 700;
-      font-size: 0.95rem;
-      flex-shrink: 0;
-    }
-
-    .rank-1 { background: rgba(212,168,67,0.2); color: var(--rank1); border: 2px solid var(--rank1); }
-    .rank-2 { background: rgba(173,181,189,0.2); color: var(--rank2); border: 2px solid var(--rank2); }
-    .rank-3 { background: rgba(205,127,50,0.2);  color: var(--rank3); border: 2px solid var(--rank3); }
-
-    .move-word-section { flex: 1; min-width: 0; }
-
-    .move-word {
-      font-family: 'DM Mono', monospace;
-      font-size: 1.4rem;
-      font-weight: 500;
-      color: var(--cream);
-      letter-spacing: 0.06em;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .bingo-badge {
-      font-size: 0.65rem;
-      font-family: 'DM Sans', sans-serif;
-      background: linear-gradient(135deg, #d4a843, #c87020);
-      color: #1a0e04;
-      padding: 0.15rem 0.5rem;
-      border-radius: 20px;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      display: none;
-    }
-
-    .bingo-badge.show { display: inline-block; }
-
-    .move-meta {
-      display: flex;
-      gap: 0.5rem;
-      margin-top: 0.25rem;
-      flex-wrap: wrap;
-    }
-
-    .meta-chip {
-      font-size: 0.7rem;
-      padding: 0.15rem 0.5rem;
-      border-radius: 20px;
-      border: 1px solid;
-      font-weight: 500;
-      letter-spacing: 0.03em;
-    }
-
-    .chip-pos  { color: var(--blue-light);   border-color: rgba(133,193,233,0.3);  background: rgba(41,128,185,0.1); }
-    .chip-dir  { color: var(--green-bright); border-color: rgba(106,184,130,0.3);  background: rgba(74,124,89,0.1); }
-    .chip-tiles { color: var(--cream-dim);   border-color: rgba(200,184,138,0.3);  background: rgba(240,230,200,0.05); }
-
-    .move-score {
-      text-align: right;
-      flex-shrink: 0;
-    }
-
-    .score-num {
-      font-family: 'Playfair Display', serif;
-      font-size: 2rem;
-      font-weight: 600;
-      line-height: 1;
-    }
-
-    .rank-1 ~ .move-score .score-num,
-    .move-card:first-child .score-num { color: var(--gold); }
-    .move-card:nth-child(2) .score-num { color: var(--rank2); }
-    .move-card:nth-child(3) .score-num { color: var(--rank3); }
-
-    .score-label { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; }
-
-    .move-card-body {
-      border-top: 1px solid var(--border);
-      padding: 0.9rem 1.2rem;
-    }
-
-    .breakdown-label {
-      font-size: 0.68rem;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--text-dim);
-      margin-bottom: 0.3rem;
-      font-weight: 600;
-    }
-
-    .breakdown-text {
-      font-size: 0.78rem;
-      color: var(--cream-dim);
-      font-family: 'DM Mono', monospace;
-      margin-bottom: 0.8rem;
-      line-height: 1.5;
-    }
-
-    .reasoning-text {
-      font-size: 0.82rem;
-      color: var(--text-dim);
-      line-height: 1.6;
-    }
-
-    /* ── TILES DISPLAY ── */
-    .tiles-display {
-      display: flex;
-      gap: 3px;
-      flex-wrap: wrap;
-      margin: 0.5rem 0;
-    }
-
-    .mini-tile {
-      width: 28px; height: 30px;
-      background: var(--tile-bg);
-      border: 1px solid var(--tile-border);
-      border-radius: 3px;
-      display: flex; align-items: center; justify-content: center;
-      font-family: 'DM Mono', monospace;
-      font-size: 0.85rem;
-      font-weight: 500;
-      color: var(--tile-text);
-      box-shadow: 0 2px 0 var(--tile-border);
-      position: relative;
-    }
-
-    .mini-tile.existing {
-      background: #dde4c0;
-      border-color: #7a8a50;
-      box-shadow: 0 2px 0 #7a8a50;
-    }
-
-    .mini-tile.blank {
-      background: #f0e0b0;
-      border-color: #c0a060;
-    }
-
-    /* ── EMPTY STATE ── */
-    .empty-state {
-      text-align: center;
-      padding: 3rem 1rem;
-      color: var(--text-dim);
-    }
-
-    .empty-state .empty-icon {
-      font-size: 3rem;
-      margin-bottom: 0.8rem;
-      display: block;
-      opacity: 0.4;
-    }
-
-    .empty-state p { font-size: 0.85rem; line-height: 1.6; }
-
-    /* ── CROSSWORDS ── */
-    .crossword-section {
-      margin-top: 0.5rem;
-      padding-top: 0.5rem;
-      border-top: 1px solid var(--border);
-    }
-
-    .crossword-chips {
-      display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.25rem;
-    }
-
-    .crossword-chip {
-      font-size: 0.72rem;
-      font-family: 'DM Mono', monospace;
-      background: rgba(74,124,89,0.12);
-      border: 1px solid rgba(74,124,89,0.3);
-      color: var(--green-bright);
-      padding: 0.1rem 0.45rem;
-      border-radius: 4px;
-    }
-
-    /* ── FOOTER ── */
-    footer {
-      text-align: center;
-      padding: 1.5rem;
-      font-size: 0.72rem;
-      color: var(--text-dim);
-      border-top: 1px solid var(--border);
-      margin-top: 2rem;
-    }
-
-    footer span { color: var(--gold-dim); }
+    body { background:var(--bg); color:var(--text); font-family:'DM Sans',sans-serif; min-height:100vh; background-image:radial-gradient(ellipse 80% 50% at 50% 0%,rgba(74,124,89,0.1) 0%,transparent 65%); }
+    header { text-align:center; padding:1.8rem 1rem 1rem; }
+    .logo-row { display:flex; align-items:center; justify-content:center; gap:0.7rem; margin-bottom:0.3rem; }
+    .logo-tiles { display:flex; gap:3px; }
+    .logo-tile { width:30px;height:30px;background:var(--tile-bg);border:2px solid var(--tile-border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:0.8rem;font-weight:500;color:var(--tile-text);box-shadow:0 2px 0 var(--tile-border),0 3px 6px rgba(0,0,0,0.4);position:relative; }
+    .logo-tile .v { position:absolute;bottom:1px;right:2px;font-size:0.32rem;font-weight:600;color:#6b4c1a; }
+    h1 { font-family:'Playfair Display',serif;font-size:clamp(1.5rem,4vw,2.2rem);color:var(--gold); }
+    .tagline { font-size:0.75rem;color:var(--text-dim);letter-spacing:0.1em;text-transform:uppercase;margin-top:0.2rem; }
+    .app { max-width:1400px;margin:0 auto;padding:0 1rem 3rem;display:grid;grid-template-columns:320px 1fr;gap:1.1rem;align-items:start; }
+    @media(max-width:860px){.app{grid-template-columns:1fr;}}
+    .card { background:var(--surface);border:1px solid var(--border);border-radius:11px;overflow:hidden;margin-bottom:0.9rem; }
+    .card:last-child{margin-bottom:0;}
+    .card-header { padding:0.65rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:0.5rem;background:var(--surface2); }
+    .card-icon { width:19px;height:19px;background:var(--gold);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:0.65rem; }
+    .card-title { font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--cream-dim); }
+    .card-body { padding:0.9rem; }
+    #drop-zone { border:2px dashed var(--border);border-radius:8px;padding:1.4rem 1rem;text-align:center;cursor:pointer;transition:all 0.2s;position:relative;background:rgba(74,124,89,0.03); }
+    #drop-zone:hover,#drop-zone.drag-over { border-color:var(--green);background:rgba(74,124,89,0.07); }
+    #drop-zone.has-image { padding:0;border-style:solid;border-color:var(--green); }
+    .drop-icon { font-size:1.8rem;margin-bottom:0.4rem;display:block; }
+    .drop-text { font-size:0.78rem;color:var(--text-dim);line-height:1.5; }
+    .drop-text strong{color:var(--green-bright);font-weight:500;}
+    #file-input{display:none;}
+    #preview-img{width:100%;height:auto;display:block;border-radius:6px;}
+    .clear-img-btn { position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.7);border:1px solid rgba(255,255,255,0.2);color:#fff;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:0.65rem;display:none;align-items:center;justify-content:center;z-index:2;transition:background 0.15s; }
+    .clear-img-btn:hover{background:var(--red);}
+    #drop-zone.has-image .clear-img-btn{display:flex;}
+    .rack-label{font-size:0.7rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.45rem;font-weight:500;}
+    .rack-tiles{display:flex;gap:4px;align-items:center;flex-wrap:wrap;}
+    .rack-tile-input { width:36px;height:40px;background:var(--tile-bg);border:2px solid var(--tile-border);border-radius:5px;text-align:center;font-family:'DM Mono',monospace;font-size:1rem;font-weight:500;color:var(--tile-text);text-transform:uppercase;box-shadow:0 3px 0 #8a6020,0 4px 8px rgba(0,0,0,0.3);outline:none;transition:all 0.15s;caret-color:transparent;padding-bottom:2px; }
+    .rack-tile-input:focus{border-color:var(--gold);box-shadow:0 3px 0 #8a6020,0 0 0 3px rgba(212,168,67,0.25),0 4px 8px rgba(0,0,0,0.3);transform:translateY(-2px);}
+    .rack-tile-input::placeholder{color:#c4a870;font-size:0.75rem;}
+    .rack-clear-btn{background:none;border:1px solid var(--border);color:var(--text-dim);padding:0.22rem 0.45rem;border-radius:5px;font-size:0.65rem;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s;margin-left:auto;}
+    .rack-clear-btn:hover{color:var(--text);border-color:var(--green);}
+    .rack-hint{font-size:0.65rem;color:var(--text-dim);margin-top:0.3rem;}
+    .analyse-btn { width:100%;margin-top:0.8rem;padding:0.75rem;background:linear-gradient(135deg,#4a7c59,#2e5c3a);border:1px solid var(--green);border-radius:9px;color:#fff;font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:600;cursor:pointer;letter-spacing:0.04em;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:0.45rem; }
+    .analyse-btn:hover:not(:disabled){background:linear-gradient(135deg,#5a9c6e,#3a7049);transform:translateY(-1px);box-shadow:0 4px 14px rgba(74,124,89,0.35);}
+    .analyse-btn:disabled{opacity:0.45;cursor:not-allowed;}
+    .spinner{width:15px;height:15px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;display:none;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    .analyse-btn.loading .spinner{display:block;}
+    .analyse-btn.loading .btn-text,.analyse-btn.loading .btn-icon{display:none;}
+    #status-bar{margin-top:0.45rem;font-size:0.7rem;color:var(--text-dim);text-align:center;min-height:1em;}
+    #status-bar.error{color:#e74c3c;}
+    #status-bar.success{color:var(--green-bright);}
+    /* Right panel */
+    .right-card{background:var(--surface);border:1px solid var(--border);border-radius:11px;overflow:hidden;}
+    .right-header{padding:0.65rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface2);}
+    .tabs{display:flex;border-bottom:1px solid var(--border);}
+    .tab-btn{flex:1;padding:0.55rem 0.5rem;background:none;border:none;color:var(--text-dim);font-family:'DM Sans',sans-serif;font-size:0.72rem;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;cursor:pointer;transition:all 0.15s;border-bottom:2px solid transparent;margin-bottom:-1px;}
+    .tab-btn.active{color:var(--gold);border-bottom-color:var(--gold);}
+    .tab-btn:hover:not(.active){color:var(--cream-dim);}
+    .tab-panel{display:none;}
+    .tab-panel.active{display:block;}
+    /* Board */
+    #board-summary{font-size:0.75rem;color:var(--text-dim);line-height:1.5;padding:0.55rem 0.85rem;background:rgba(74,124,89,0.06);border-bottom:1px solid var(--border);display:none;}
+    #board-summary.visible{display:block;}
+    #board-summary strong{color:var(--cream-dim);}
+    #board-wrap{padding:0.9rem;overflow-x:auto;}
+    .board-outer{display:flex;flex-direction:column;align-items:flex-start;gap:0;}
+    .move-selector{display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:0.7rem;}
+    .move-sel-btn{padding:0.28rem 0.75rem;border-radius:20px;border:1px solid var(--border);background:none;color:var(--text-dim);font-family:'DM Sans',sans-serif;font-size:0.7rem;font-weight:600;cursor:pointer;transition:all 0.18s;}
+    .move-sel-btn.active{border-color:var(--gold);color:var(--gold);background:rgba(212,168,67,0.1);}
+    .move-sel-btn:hover:not(.active){border-color:var(--green);color:var(--cream-dim);}
+    .col-labels{display:flex;padding-left:22px;margin-bottom:1px;}
+    .col-labels span{width:26px;text-align:center;font-size:0.5rem;font-weight:700;color:var(--text-dim);font-family:'DM Mono',monospace;}
+    .board-rows{display:flex;flex-direction:column;gap:1px;}
+    .board-row{display:flex;align-items:center;gap:1px;}
+    .row-label{width:20px;font-size:0.5rem;font-weight:700;color:var(--text-dim);font-family:'DM Mono',monospace;text-align:right;padding-right:2px;flex-shrink:0;}
+    .board-grid{display:grid;grid-template-columns:repeat(15,26px);grid-template-rows:repeat(15,26px);gap:1px;background:var(--board-line);border:2px solid var(--board-line);border-radius:3px;overflow:hidden;}
+    .cell{width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:0.55rem;font-weight:600;position:relative;flex-direction:column;line-height:1;}
+    .cell.tws{background:var(--tws);color:rgba(255,255,255,0.75);}
+    .cell.dws{background:var(--dws);color:rgba(0,0,0,0.5);}
+    .cell.tls{background:var(--tls);color:rgba(255,255,255,0.75);}
+    .cell.dls{background:var(--dls);color:rgba(0,0,0,0.55);}
+    .cell.centre{background:var(--dws);color:rgba(0,0,0,0.5);}
+    .cell.plain{background:var(--board-bg);}
+    .cell.has-tile{background:var(--tile-bg)!important;color:var(--tile-text)!important;box-shadow:inset 0 -2px 0 var(--tile-border);}
+    .cell.new-tile{background:#fff8c0!important;color:var(--tile-text)!important;box-shadow:inset 0 -2px 0 #c8a020;animation:popIn 0.25s ease both;}
+    @keyframes popIn{from{transform:scale(0.5);opacity:0;}to{transform:scale(1);opacity:1;}}
+    .cell-ltr{font-size:0.68rem;font-weight:700;}
+    .cell-val{position:absolute;bottom:1px;right:2px;font-size:0.3rem;font-weight:600;color:#7a5020;line-height:1;}
+    .cell-lbl{font-size:0.42rem;font-weight:700;text-align:center;line-height:1.1;}
+    .board-legend{display:flex;gap:0.6rem;flex-wrap:wrap;margin-top:0.6rem;}
+    .leg{display:flex;align-items:center;gap:0.25rem;font-size:0.58rem;color:var(--text-dim);}
+    .leg-sw{width:11px;height:11px;border-radius:2px;flex-shrink:0;}
+    /* Move cards */
+    #moves-list{display:flex;flex-direction:column;gap:0.8rem;padding:0.9rem;}
+    .move-card{background:var(--surface2);border:1px solid var(--border);border-radius:9px;overflow:hidden;animation:slideUp 0.28s ease both;cursor:pointer;transition:border-color 0.15s;}
+    .move-card:nth-child(2){animation-delay:0.07s;}
+    .move-card:nth-child(3){animation-delay:0.14s;}
+    .move-card:hover,.move-card.sel{border-color:var(--gold);}
+    @keyframes slideUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+    .mct{display:flex;align-items:center;gap:0.8rem;padding:0.8rem 0.9rem;}
+    .rb{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.85rem;flex-shrink:0;}
+    .rb.r1{background:rgba(212,168,67,0.18);color:var(--rank1);border:2px solid var(--rank1);}
+    .rb.r2{background:rgba(173,181,189,0.18);color:var(--rank2);border:2px solid var(--rank2);}
+    .rb.r3{background:rgba(205,127,50,0.18);color:var(--rank3);border:2px solid var(--rank3);}
+    .mw{font-family:'DM Mono',monospace;font-size:1.2rem;font-weight:500;color:var(--cream);letter-spacing:0.06em;display:flex;align-items:center;gap:0.35rem;}
+    .bingo-b{font-size:0.58rem;font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#d4a843,#c87020);color:#1a0e04;padding:0.1rem 0.4rem;border-radius:20px;font-weight:700;text-transform:uppercase;display:none;}
+    .bingo-b.show{display:inline-block;}
+    .mm{display:flex;gap:0.35rem;margin-top:0.18rem;flex-wrap:wrap;}
+    .mc{font-size:0.62rem;padding:0.1rem 0.4rem;border-radius:20px;border:1px solid;font-weight:500;}
+    .mc-pos{color:var(--blue-light);border-color:rgba(133,193,233,0.3);background:rgba(41,128,185,0.1);}
+    .mc-dir{color:var(--green-bright);border-color:rgba(106,184,130,0.3);background:rgba(74,124,89,0.1);}
+    .ms{text-align:right;flex-shrink:0;}
+    .sn{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:600;line-height:1;}
+    .move-card:nth-child(1) .sn{color:var(--rank1);}
+    .move-card:nth-child(2) .sn{color:var(--rank2);}
+    .move-card:nth-child(3) .sn{color:var(--rank3);}
+    .sl{font-size:0.58rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;}
+    .mcb{border-top:1px solid var(--border);padding:0.7rem 0.9rem;}
+    .bl{font-size:0.62rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);margin-bottom:0.22rem;font-weight:600;}
+    .bt{font-size:0.72rem;color:var(--cream-dim);font-family:'DM Mono',monospace;margin-bottom:0.6rem;line-height:1.5;}
+    .rt{font-size:0.77rem;color:var(--text-dim);line-height:1.6;}
+    .cw-chips{display:flex;gap:0.3rem;flex-wrap:wrap;margin:0.25rem 0 0.6rem;}
+    .cwc{font-size:0.65rem;font-family:'DM Mono',monospace;background:rgba(74,124,89,0.12);border:1px solid rgba(74,124,89,0.3);color:var(--green-bright);padding:0.07rem 0.38rem;border-radius:4px;}
+    .view-hint{font-size:0.63rem;color:var(--gold-dim);margin-top:0.15rem;}
+    .tile-strip{display:flex;gap:3px;margin:0.35rem 0;flex-wrap:wrap;}
+    .mt{width:24px;height:26px;background:var(--tile-bg);border:1px solid var(--tile-border);border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:0.72rem;font-weight:600;color:var(--tile-text);box-shadow:0 2px 0 var(--tile-border);}
+    .mt.ex{background:#dde4c0;border-color:#7a8a50;box-shadow:0 2px 0 #7a8a50;}
+    .empty-state{text-align:center;padding:2.2rem 1rem;color:var(--text-dim);}
+    .empty-state .ei{font-size:2.2rem;margin-bottom:0.6rem;display:block;opacity:0.4;}
+    .empty-state p{font-size:0.8rem;line-height:1.6;}
+    footer{text-align:center;padding:1rem;font-size:0.65rem;color:var(--text-dim);border-top:1px solid var(--border);margin-top:1rem;}
+    footer span{color:var(--gold-dim);}
   </style>
 </head>
 <body>
-
 <header>
   <div class="logo-row">
-    <div class="logo-tiles">
-      <div class="logo-tile">S<span class="val">1</span></div>
-      <div class="logo-tile">G<span class="val">2</span></div>
-    </div>
+    <div class="logo-tiles"><div class="logo-tile">S<span class="v">1</span></div><div class="logo-tile">G<span class="v">2</span></div></div>
     <h1>Scrabble Genie</h1>
-    <div class="logo-tiles">
-      <div class="logo-tile">A<span class="val">1</span></div>
-      <div class="logo-tile">I<span class="val">1</span></div>
-    </div>
+    <div class="logo-tiles"><div class="logo-tile">A<span class="v">1</span></div><div class="logo-tile">I<span class="v">1</span></div></div>
   </div>
-  <p class="tagline">AI-powered board analyser &mdash; Top 3 plays, instantly</p>
+  <p class="tagline">AI board analyser &mdash; see exactly where to play</p>
 </header>
 
 <main class="app">
-
-  <!-- ── LEFT PANEL ── -->
   <div>
-    <!-- Upload -->
-    <div class="card" style="margin-bottom:1rem">
-      <div class="card-header">
-        <div class="icon">📷</div>
-        <span class="card-title">Board Screenshot</span>
-      </div>
+    <div class="card">
+      <div class="card-header"><div class="card-icon">📷</div><span class="card-title">Board Screenshot</span></div>
       <div class="card-body">
         <div id="drop-zone">
           <span class="drop-icon">🎲</span>
-          <p class="drop-text">
-            <strong>Drag & drop</strong> your Scrabble board screenshot here,<br>
-            or <strong>click to browse</strong>
-          </p>
+          <p class="drop-text"><strong>Drag & drop</strong> or <strong>click to browse</strong></p>
           <input type="file" id="file-input" accept="image/*">
-          <button class="clear-img-btn" id="clear-img-btn" title="Remove image">✕</button>
+          <button class="clear-img-btn" id="clear-img-btn">✕</button>
           <img id="preview-img" alt="Board preview" style="display:none">
         </div>
       </div>
     </div>
-
-    <!-- Rack -->
-    <div class="card" style="margin-bottom:1rem">
-      <div class="card-header">
-        <div class="icon">🔠</div>
-        <span class="card-title">Your Rack Letters</span>
-      </div>
+    <div class="card">
+      <div class="card-header"><div class="card-icon">🔠</div><span class="card-title">Your Rack</span></div>
       <div class="card-body">
-        <div class="rack-label">Enter up to 7 tiles (? or _ for blank)</div>
+        <div class="rack-label">Up to 7 tiles — ? for blank</div>
         <div class="rack-tiles">
           <input class="rack-tile-input" id="t0" maxlength="1" placeholder="A" autocomplete="off" spellcheck="false">
           <input class="rack-tile-input" id="t1" maxlength="1" placeholder="B" autocomplete="off" spellcheck="false">
@@ -644,323 +180,285 @@
           <input class="rack-tile-input" id="t4" maxlength="1" placeholder="E" autocomplete="off" spellcheck="false">
           <input class="rack-tile-input" id="t5" maxlength="1" placeholder="F" autocomplete="off" spellcheck="false">
           <input class="rack-tile-input" id="t6" maxlength="1" placeholder="G" autocomplete="off" spellcheck="false">
-          <button class="rack-clear-btn" id="clear-rack-btn">Clear rack</button>
+          <button class="rack-clear-btn" id="clear-rack-btn">Clear</button>
         </div>
-        <p class="rack-hint">Use ? or _ for a blank tile</p>
+        <p class="rack-hint">? or _ for a blank tile</p>
       </div>
     </div>
-
-    <!-- Analyse Button -->
-    <button class="analyse-btn" id="analyse-btn" disabled>
-      <span class="btn-icon">✨</span>
-      <span class="btn-text">Analyse Board</span>
-      <div class="spinner"></div>
-    </button>
-    <div id="status-bar">Upload a board screenshot to begin</div>
+    <div class="card" style="padding:0.9rem;margin-bottom:0">
+      <button class="analyse-btn" id="analyse-btn" disabled>
+        <span class="btn-icon">✨</span><span class="btn-text">Analyse Board</span><div class="spinner"></div>
+      </button>
+      <div id="status-bar">Upload a board screenshot to begin</div>
+    </div>
   </div>
 
-  <!-- ── RIGHT PANEL ── -->
-  <div class="card">
-    <div class="card-header results-header">
-      <div style="display:flex;align-items:center;gap:0.6rem">
-        <div class="icon">🏆</div>
-        <span class="card-title">Top 3 Moves</span>
-      </div>
-      <span id="rack-display" style="font-family:'DM Mono',monospace;font-size:0.8rem;color:var(--cream-dim);"></span>
+  <div class="right-card">
+    <div class="right-header">
+      <div style="display:flex;align-items:center;gap:0.5rem"><div class="card-icon">🏆</div><span class="card-title">Analysis</span></div>
+      <span id="rack-display" style="font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--cream-dim)"></span>
     </div>
-    <div class="card-body">
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="board">📋 Board View</button>
+      <button class="tab-btn" data-tab="moves">🏅 Top 3 Moves</button>
+    </div>
+    <div class="tab-panel active" id="tab-board">
       <div id="board-summary"></div>
-
-      <div id="moves-container">
-        <div class="empty-state">
-          <span class="empty-icon">🧩</span>
-          <p>Upload your Scrabble board and enter your rack letters.<br>The Genie will find your top 3 plays with scores and reasoning.</p>
-        </div>
+      <div id="board-wrap">
+        <div class="empty-state"><span class="ei">🗺️</span><p>Your board will appear here after analysis,<br>with the best play highlighted in yellow.</p></div>
+      </div>
+    </div>
+    <div class="tab-panel" id="tab-moves">
+      <div id="moves-list">
+        <div class="empty-state"><span class="ei">🧩</span><p>Upload your board and enter rack letters.<br>Top 3 plays appear here — click any to see it on the board.</p></div>
       </div>
     </div>
   </div>
-
 </main>
-
-<footer>
-  Scrabble Genie &mdash; powered by <span>Claude AI</span> &mdash; for entertainment purposes
-</footer>
+<footer>Scrabble Genie &mdash; powered by <span>Claude AI</span> &mdash; for entertainment purposes</footer>
 
 <script>
-  // ── State ──
-  let imageBase64 = null;
-  let mediaType = 'image/jpeg';
+const COLS='ABCDEFGHIJKLMNO'.split('');
+const LETTER_VALS={A:1,B:3,C:3,D:2,E:1,F:4,G:2,H:4,I:1,J:8,K:5,L:1,M:3,N:1,O:1,P:3,Q:10,R:1,S:1,T:1,U:1,V:4,W:4,X:8,Y:4,Z:10,'?':0,'_':0};
+const TWS=new Set(['A1','H1','O1','A8','O8','A15','H15','O15']);
+const DWS=new Set(['B2','C3','D4','E5','K5','L4','M3','N2','B14','C13','D12','E11','K11','L12','M13','N14','H8']);
+const TLS=new Set(['B6','B10','F2','F6','F10','F14','J2','J6','J10','J14','N6','N10']);
+const DLS=new Set(['D1','L1','G3','I3','A4','H4','O4','C7','G7','I7','M7','D8','L8','C9','G9','I9','M9','A12','H12','O12','G13','I13','D15','L15']);
 
-  // ── Elements ──
-  const dropZone    = document.getElementById('drop-zone');
-  const fileInput   = document.getElementById('file-input');
-  const previewImg  = document.getElementById('preview-img');
-  const clearImgBtn = document.getElementById('clear-img-btn');
-  const analyseBtn  = document.getElementById('analyse-btn');
-  const statusBar   = document.getElementById('status-bar');
-  const movesContainer = document.getElementById('moves-container');
-  const boardSummary   = document.getElementById('board-summary');
-  const rackDisplay    = document.getElementById('rack-display');
-  const clearRackBtn   = document.getElementById('clear-rack-btn');
-  const tileInputs     = [...document.querySelectorAll('.rack-tile-input')];
+function pClass(c,r){const k=c+r;if(TWS.has(k))return'tws';if(DWS.has(k))return'dws';if(TLS.has(k))return'tls';if(DLS.has(k))return'dls';return'plain';}
+function pLabel(c,r){const k=c+r;if(TWS.has(k))return'3W';if(k==='H8')return'★';if(DWS.has(k))return'2W';if(TLS.has(k))return'3L';if(DLS.has(k))return'2L';return'';}
 
-  // ── Image Upload ──
-  dropZone.addEventListener('click', (e) => {
-    if (e.target === clearImgBtn) return;
-    fileInput.click();
+let imageBase64=null,mediaType='image/jpeg',analysisData=null,selectedMove=1;
+
+const dropZone=document.getElementById('drop-zone');
+const fileInput=document.getElementById('file-input');
+const previewImg=document.getElementById('preview-img');
+const clearImgBtn=document.getElementById('clear-img-btn');
+const analyseBtn=document.getElementById('analyse-btn');
+const statusBar=document.getElementById('status-bar');
+const rackDisplay=document.getElementById('rack-display');
+const clearRackBtn=document.getElementById('clear-rack-btn');
+const tileInputs=[...document.querySelectorAll('.rack-tile-input')];
+const boardSummary=document.getElementById('board-summary');
+const boardWrap=document.getElementById('board-wrap');
+const movesList=document.getElementById('moves-list');
+
+// Tabs
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
   });
+});
 
-  dropZone.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    dropZone.classList.add('drag-over');
+// Upload
+dropZone.addEventListener('click',e=>{if(e.target!==clearImgBtn)fileInput.click();});
+dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag-over');});
+dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag-over');const f=e.dataTransfer.files[0];if(f?.type.startsWith('image/'))loadImg(f);});
+fileInput.addEventListener('change',()=>{if(fileInput.files[0])loadImg(fileInput.files[0]);});
+clearImgBtn.addEventListener('click',e=>{e.stopPropagation();clearImg();});
+
+function loadImg(file){
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{
+      const MAX=1200;let w=img.width,h=img.height;
+      if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
+      const cv=document.createElement('canvas');cv.width=w;cv.height=h;
+      cv.getContext('2d').drawImage(img,0,0,w,h);
+      const dataUrl=cv.toDataURL('image/jpeg',0.85);
+      imageBase64=dataUrl.split(',')[1];mediaType='image/jpeg';
+      previewImg.src=dataUrl;previewImg.style.display='block';
+      dropZone.classList.add('has-image');
+      dropZone.querySelector('.drop-icon').style.display='none';
+      dropZone.querySelector('.drop-text').style.display='none';
+      updateBtn();setStatus('Image ready — enter rack tiles and click Analyse','');
+    };img.src=ev.target.result;
+  };reader.readAsDataURL(file);
+}
+function clearImg(){
+  imageBase64=null;previewImg.src='';previewImg.style.display='none';
+  dropZone.classList.remove('has-image');
+  dropZone.querySelector('.drop-icon').style.display='';
+  dropZone.querySelector('.drop-text').style.display='';
+  fileInput.value='';updateBtn();setStatus('Upload a board screenshot to begin','');
+}
+
+// Rack
+tileInputs.forEach((inp,i)=>{
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='Backspace'&&!inp.value&&i>0)tileInputs[i-1].focus();
+    if(e.key==='ArrowLeft'&&i>0)tileInputs[i-1].focus();
+    if(e.key==='ArrowRight'&&i<6)tileInputs[i+1].focus();
   });
-
-  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-
-  dropZone.addEventListener('drop', (e) => {
-    e.preventDefault();
-    dropZone.classList.remove('drag-over');
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) loadImage(file);
-  });
-
-  fileInput.addEventListener('change', () => {
-    if (fileInput.files[0]) loadImage(fileInput.files[0]);
-  });
-
-  clearImgBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    clearImage();
-  });
-
-  function loadImage(file) {
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const img = new Image();
-      img.onload = () => {
-        // Resize to max 1200px longest side, compress to JPEG 0.85
-        const MAX = 1200;
-        let w = img.width, h = img.height;
-        if (w > MAX || h > MAX) {
-          if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
-          else       { w = Math.round(w * MAX / h); h = MAX; }
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-        imageBase64 = dataUrl.split(',')[1];
-        mediaType = 'image/jpeg';
-        previewImg.src = dataUrl;
-        previewImg.style.display = 'block';
-        dropZone.classList.add('has-image');
-        dropZone.querySelector('.drop-icon').style.display = 'none';
-        dropZone.querySelector('.drop-text').style.display = 'none';
-        updateAnalyseBtn();
-        setStatus('Image loaded — enter your rack letters and click Analyse', '');
-      };
-      img.src = ev.target.result;
-    };
-    reader.readAsDataURL(file);
-  }
-
-  function clearImage() {
-    imageBase64 = null;
-    previewImg.src = '';
-    previewImg.style.display = 'none';
-    dropZone.classList.remove('has-image');
-    dropZone.querySelector('.drop-icon').style.display = '';
-    dropZone.querySelector('.drop-text').style.display = '';
-    fileInput.value = '';
-    updateAnalyseBtn();
-    setStatus('Upload a board screenshot to begin', '');
-  }
-
-  // ── Rack Inputs ──
-  tileInputs.forEach((input, i) => {
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Backspace' && !input.value && i > 0) {
-        tileInputs[i - 1].focus();
-      }
-      if (e.key === 'ArrowLeft' && i > 0) tileInputs[i - 1].focus();
-      if (e.key === 'ArrowRight' && i < 6) tileInputs[i + 1].focus();
-    });
-    input.addEventListener('input', () => {
-      // Sanitise: only letters, ? or _
-      const val = input.value.replace(/[^a-zA-Z?_]/g, '').slice(-1);
-      input.value = val.toUpperCase();
-      if (val && i < 6) tileInputs[i + 1].focus();
-      updateRackDisplay();
-    });
-    input.addEventListener('paste', (e) => {
-      e.preventDefault();
-      const pasted = e.clipboardData.getData('text').toUpperCase().replace(/[^A-Z?_]/g, '');
-      pasted.split('').forEach((ch, j) => {
-        if (i + j < 7) tileInputs[i + j].value = ch;
-      });
-      const next = Math.min(i + pasted.length, 6);
-      tileInputs[next].focus();
-      updateRackDisplay();
-    });
-  });
-
-  clearRackBtn.addEventListener('click', () => {
-    tileInputs.forEach(t => t.value = '');
-    tileInputs[0].focus();
+  inp.addEventListener('input',()=>{
+    inp.value=inp.value.replace(/[^a-zA-Z?_]/g,'').slice(-1).toUpperCase();
+    if(inp.value&&i<6)tileInputs[i+1].focus();
     updateRackDisplay();
   });
-
-  function getRack() {
-    return tileInputs.map(t => t.value).join('');
-  }
-
-  function updateRackDisplay() {
-    const rack = getRack();
-    rackDisplay.textContent = rack ? `Rack: ${rack.split('').join(' ')}` : '';
-  }
-
-  // ── Analyse Button State ──
-  function updateAnalyseBtn() {
-    analyseBtn.disabled = !imageBase64;
-  }
-
-  function setStatus(msg, type = '') {
-    statusBar.textContent = msg;
-    statusBar.className = type;
-  }
-
-  function setLoading(on) {
-    if (on) {
-      analyseBtn.classList.add('loading');
-      analyseBtn.disabled = true;
-    } else {
-      analyseBtn.classList.remove('loading');
-      analyseBtn.disabled = !imageBase64;
-    }
-  }
-
-  // ── Analyse ──
-  analyseBtn.addEventListener('click', async () => {
-    if (!imageBase64) return;
-
-    const rack = getRack();
-    setLoading(true);
-    setStatus('Consulting the Genie… analysing your board…', '');
-    boardSummary.classList.remove('visible');
-    movesContainer.innerHTML = '<div class="empty-state"><span class="empty-icon" style="animation:spin 1.2s linear infinite;display:inline-block">🔮</span><p>Reading the board…</p></div>';
-
-    try {
-      const res = await fetch('/.netlify/functions/analyse', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64, mediaType, rackLetters: rack })
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || data.error) {
-        throw new Error(data.error || `Server error ${res.status}`);
-      }
-
-      renderResults(data);
-      setStatus('Analysis complete ✓', 'success');
-
-    } catch (err) {
-      setStatus(`Error: ${err.message}`, 'error');
-      movesContainer.innerHTML = `
-        <div class="empty-state">
-          <span class="empty-icon">⚠️</span>
-          <p>${err.message}</p>
-        </div>`;
-    } finally {
-      setLoading(false);
-    }
+  inp.addEventListener('paste',e=>{
+    e.preventDefault();
+    const p=e.clipboardData.getData('text').toUpperCase().replace(/[^A-Z?_]/g,'');
+    p.split('').forEach((ch,j)=>{if(i+j<7)tileInputs[i+j].value=ch;});
+    tileInputs[Math.min(i+p.length,6)].focus();updateRackDisplay();
   });
+});
+clearRackBtn.addEventListener('click',()=>{tileInputs.forEach(t=>t.value='');tileInputs[0].focus();updateRackDisplay();});
+function getRack(){return tileInputs.map(t=>t.value).join('');}
+function updateRackDisplay(){const r=getRack();rackDisplay.textContent=r?'Rack: '+r.split('').join(' '):'';}
+function updateBtn(){analyseBtn.disabled=!imageBase64;}
+function setStatus(msg,type=''){statusBar.textContent=msg;statusBar.className=type;}
+function setLoading(on){
+  if(on){analyseBtn.classList.add('loading');analyseBtn.disabled=true;}
+  else{analyseBtn.classList.remove('loading');analyseBtn.disabled=!imageBase64;}
+}
 
-  // ── Render Results ──
-  function renderResults(data) {
-    // Board summary
-    if (data.boardSummary) {
-      boardSummary.innerHTML = `<strong>Board:</strong> ${escHtml(data.boardSummary)}`;
-      boardSummary.classList.add('visible');
-    }
-
-    // Rack display
-    if (data.rack) {
-      rackDisplay.textContent = `Rack: ${data.rack.split('').join(' ')}`;
-    }
-
-    const moves = data.moves || [];
-    if (!moves.length) {
-      movesContainer.innerHTML = '<div class="empty-state"><span class="empty-icon">🤔</span><p>No moves found. Try different rack letters.</p></div>';
-      return;
-    }
-
-    movesContainer.innerHTML = '';
-    moves.forEach((move, idx) => {
-      movesContainer.appendChild(buildMoveCard(move, idx + 1));
+// Analyse
+analyseBtn.addEventListener('click',async()=>{
+  if(!imageBase64)return;
+  setLoading(true);setStatus('Consulting the Genie…','');
+  boardSummary.classList.remove('visible');
+  boardWrap.innerHTML='<div class="empty-state"><span class="ei" style="animation:spin 1s linear infinite;display:inline-block">🔮</span><p>Reading the board…</p></div>';
+  movesList.innerHTML='<div class="empty-state"><span class="ei" style="animation:spin 1s linear infinite;display:inline-block">🔮</span><p>Finding best plays…</p></div>';
+  try{
+    const res=await fetch('/.netlify/functions/analyse',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({imageBase64,mediaType,rackLetters:getRack()})
     });
+    const data=await res.json();
+    if(!res.ok||data.error)throw new Error(data.error||'Server error '+res.status);
+    analysisData=data;selectedMove=1;
+    renderAll(data);
+    setStatus('Analysis complete ✓','success');
+    document.querySelector('[data-tab="board"]').click();
+  }catch(err){
+    setStatus('Error: '+err.message,'error');
+    const html=`<div class="empty-state"><span class="ei">⚠️</span><p>${esc(err.message)}</p></div>`;
+    boardWrap.innerHTML=html;movesList.innerHTML=html;
+  }finally{setLoading(false);}
+});
+
+function renderAll(data){
+  if(data.boardSummary){boardSummary.innerHTML='<strong>Board:</strong> '+esc(data.boardSummary);boardSummary.classList.add('visible');}
+  if(data.rack)rackDisplay.textContent='Rack: '+data.rack.split('').join(' ');
+  renderBoard(data,selectedMove);
+  renderMoves(data);
+}
+
+function renderBoard(data,moveIdx){
+  const existMap={};
+  (data.existingTiles||[]).forEach(t=>{existMap[t.col+''+t.row]=t.letter.toUpperCase();});
+
+  const newMap={};
+  const moves=data.moves||[];
+  if(moveIdx>0&&moves[moveIdx-1]){
+    (moves[moveIdx-1].tiles||[]).forEach(t=>{if(t.isNew)newMap[t.col+''+t.row]=t.letter.toUpperCase();});
   }
 
-  function buildMoveCard(move, fallbackRank) {
-    const rank = move.rank || fallbackRank;
-    const rankClass = `rank-${Math.min(rank, 3)}`;
+  const selectorHtml=moves.length?`<div class="move-selector">${moves.map((mv,i)=>`<button class="move-sel-btn${selectedMove===i+1?' active':''}" data-move="${i+1}">#${i+1} ${esc(mv.word)} <span style="opacity:0.65">(${mv.estimatedScore})</span></button>`).join('')}</div>`:'';
 
-    // Build tile letters display
-    const rackTiles = move.rackTilesUsed || [];
-    const existingTiles = move.existingTilesUsed || [];
-    const allTilesHtml = rackTiles.map(l => `<div class="mini-tile${l === '?' || l === '_' ? ' blank' : ''}">${l === '?' || l === '_' ? '?' : escHtml(l)}</div>`).join('') +
-      existingTiles.map(l => `<div class="mini-tile existing" title="Already on board">${escHtml(l)}</div>`).join('');
+  // Build 15x15 cells
+  let cells='';
+  for(let r=1;r<=15;r++){
+    for(let ci=0;ci<15;ci++){
+      const col=COLS[ci];const key=col+''+r;
+      const existing=existMap[key];const isNew=newMap[key];
+      if(isNew){
+        const val=LETTER_VALS[isNew]??'';
+        cells+=`<div class="cell new-tile" title="${key} ← YOUR TILE"><span class="cell-ltr">${esc(isNew)}</span>${val!==''?`<span class="cell-val">${val}</span>`:''}</div>`;
+      }else if(existing){
+        const val=LETTER_VALS[existing]??'';
+        cells+=`<div class="cell has-tile" title="${key}"><span class="cell-ltr">${esc(existing)}</span>${val!==''?`<span class="cell-val">${val}</span>`:''}</div>`;
+      }else{
+        const pc=pClass(col,r);const lbl=pLabel(col,r);
+        cells+=`<div class="cell ${pc}" title="${key}">${lbl?`<span class="cell-lbl">${lbl}</span>`:''}</div>`;
+      }
+    }
+  }
 
-    const crossWordsHtml = (move.crossWords || []).length ? `
-      <div class="crossword-section">
-        <div class="breakdown-label">Also forms</div>
-        <div class="crossword-chips">
-          ${move.crossWords.map(w => `<span class="crossword-chip">${escHtml(w)}</span>`).join('')}
-        </div>
-      </div>` : '';
+  const colLabels='<div class="col-labels">'+COLS.map(c=>`<span>${c}</span>`).join('')+'</div>';
 
-    const card = document.createElement('div');
-    card.className = 'move-card';
-    card.innerHTML = `
-      <div class="move-card-top">
-        <div class="rank-badge ${rankClass}">${rank}</div>
-        <div class="move-word-section">
-          <div class="move-word">
-            ${escHtml(move.word || '?')}
-            <span class="bingo-badge ${move.isBingo ? 'show' : ''}">BINGO +50</span>
-          </div>
-          <div class="move-meta">
-            <span class="meta-chip chip-pos">${escHtml(move.position || '?')}</span>
-            <span class="meta-chip chip-dir">${move.direction === 'down' ? '↓ Down' : '→ Across'}</span>
-            ${allTilesHtml ? `<span class="meta-chip chip-tiles">${rackTiles.length} tile${rackTiles.length !== 1 ? 's' : ''} played</span>` : ''}
-          </div>
+  // Split cells into rows for row labels
+  const cellArr=cells.match(/<div class="cell[^"]*"[^>]*>[\s\S]*?<\/div>/g)||[];
+  let rowsHtml='<div class="board-rows">';
+  for(let r=1;r<=15;r++){
+    const rowCells=cellArr.slice((r-1)*15,r*15).join('');
+    rowsHtml+=`<div class="board-row"><span class="row-label">${r}</span><div class="board-grid">${rowCells}</div></div>`;
+  }
+  rowsHtml+='</div>';
+
+  const legend=`<div class="board-legend">
+    <div class="leg"><div class="leg-sw" style="background:var(--tws)"></div>3W</div>
+    <div class="leg"><div class="leg-sw" style="background:var(--dws)"></div>2W</div>
+    <div class="leg"><div class="leg-sw" style="background:var(--tls)"></div>3L</div>
+    <div class="leg"><div class="leg-sw" style="background:var(--dls)"></div>2L</div>
+    <div class="leg"><div class="leg-sw" style="background:#fff8c0;border:1px solid #c8a020"></div>Your tiles</div>
+    <div class="leg"><div class="leg-sw" style="background:var(--tile-bg);border:1px solid var(--tile-border)"></div>On board</div>
+  </div>`;
+
+  boardWrap.innerHTML=`${selectorHtml}<div class="board-outer">${colLabels}${rowsHtml}${legend}</div>`;
+
+  boardWrap.querySelectorAll('.move-sel-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      selectedMove=parseInt(btn.dataset.move);
+      renderBoard(data,selectedMove);
+      document.querySelectorAll('.move-card').forEach((c,i)=>c.classList.toggle('sel',i+1===selectedMove));
+    });
+  });
+}
+
+function renderMoves(data){
+  const moves=data.moves||[];
+  if(!moves.length){movesList.innerHTML='<div class="empty-state"><span class="ei">🤔</span><p>No moves found. Try different rack letters.</p></div>';return;}
+  movesList.innerHTML='';
+  moves.forEach((mv,i)=>{
+    const card=buildCard(mv,i+1);
+    card.addEventListener('click',()=>{
+      selectedMove=i+1;
+      renderBoard(data,selectedMove);
+      document.querySelectorAll('.move-card').forEach((c,j)=>c.classList.toggle('sel',j===i));
+      document.querySelector('[data-tab="board"]').click();
+    });
+    if(i===0)card.classList.add('sel');
+    movesList.appendChild(card);
+  });
+}
+
+function buildCard(mv,rank){
+  const newTiles=(mv.tiles||[]).filter(t=>t.isNew);
+  const usedTiles=(mv.tiles||[]).filter(t=>!t.isNew);
+  const strip=newTiles.map(t=>`<div class="mt">${esc(t.letter)}</div>`).join('')+
+    (usedTiles.length?'<span style="font-size:0.58rem;color:var(--text-dim);margin:0 3px">+</span>'+usedTiles.map(t=>`<div class="mt ex">${esc(t.letter)}</div>`).join(''):'');
+
+  const card=document.createElement('div');card.className='move-card';
+  const rk=Math.min(rank,3);
+  card.innerHTML=`
+    <div class="mct">
+      <div class="rb r${rk}">${rank}</div>
+      <div style="flex:1;min-width:0">
+        <div class="mw">${esc(mv.word||'?')}<span class="bingo-b${mv.isBingo?' show':''}">BINGO +50</span></div>
+        <div class="mm">
+          <span class="mc mc-pos">${esc(mv.startCol||'?')}${mv.startRow||'?'}</span>
+          <span class="mc mc-dir">${mv.direction==='down'?'↓ Down':'→ Across'}</span>
         </div>
-        <div class="move-score">
-          <div class="score-num">${move.estimatedScore || 0}</div>
-          <div class="score-label">pts</div>
-        </div>
+        <div class="view-hint">Click to highlight on board →</div>
       </div>
-      ${allTilesHtml ? `<div style="padding:0 1.2rem 0.4rem;"><div class="tiles-display">${allTilesHtml}</div></div>` : ''}
-      <div class="move-card-body">
-        ${move.scoreBreakdown ? `<div class="breakdown-label">Score Breakdown</div>
-        <div class="breakdown-text">${escHtml(move.scoreBreakdown)}</div>` : ''}
-        ${crossWordsHtml}
-        ${move.reasoning ? `<div class="breakdown-label" style="margin-top:${move.scoreBreakdown || move.crossWords?.length ? '0.5rem' : '0'}">Why this play</div>
-        <div class="reasoning-text">${escHtml(move.reasoning)}</div>` : ''}
-      </div>
-    `;
-    return card;
-  }
+      <div class="ms"><div class="sn">${mv.estimatedScore||0}</div><div class="sl">pts</div></div>
+    </div>
+    ${strip?`<div style="padding:0 0.9rem 0.4rem"><div class="tile-strip">${strip}</div></div>`:''}
+    <div class="mcb">
+      ${mv.scoreBreakdown?`<div class="bl">Score breakdown</div><div class="bt">${esc(mv.scoreBreakdown)}</div>`:''}
+      ${(mv.crossWords||[]).length?`<div class="bl">Also forms</div><div class="cw-chips">${mv.crossWords.map(w=>`<span class="cwc">${esc(w)}</span>`).join('')}</div>`:''}
+      ${mv.reasoning?`<div class="bl">Why this play</div><div class="rt">${esc(mv.reasoning)}</div>`:''}
+    </div>`;
+  return card;
+}
 
-  function escHtml(str) {
-    if (!str) return '';
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
-  }
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 </script>
 </body>
 </html>
